@@ -1,4 +1,4 @@
-# videosays-cli
+# videosays
 
 Videosays command-line tool for turning authorized videos into transcript text.
 
@@ -6,10 +6,10 @@ Videosays command-line tool for turning authorized videos into transcript text.
 
 ```bash
 # Use directly
-npx videosays-cli setup
+npx videosays setup
 
 # Or install globally
-npm install -g videosays-cli
+npm install -g videosays
 videosays setup
 ```
 

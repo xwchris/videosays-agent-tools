@@ -20,16 +20,16 @@ git clone https://github.com/xwchris/videosays-agent-tools.git
 ## First Use
 
 ```bash
-npx videosays-cli setup
+npx videosays setup
 ```
 
 ## Examples
 
 ```bash
-npx videosays-cli transcribe "https://www.tiktok.com/@creator/video/123456"
-npx videosays-cli transcribe "https://v.douyin.com/xxxxx/" zh-CN
-npx videosays-cli balance
-npx videosays-cli history 10
+npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
+npx videosays transcribe "https://v.douyin.com/xxxxx/" zh-CN
+npx videosays balance
+npx videosays history 10
 ```
 
 ## Compliance Note

@@ -5,13 +5,13 @@ Videosays command-line and agent skill packages for turning authorized video con
 This repository contains:
 
 - `packages/cli` - npm CLI package, exposed as the `videosays` command.
-- `packages/skill` - agent skill that calls `npx videosays-cli`.
+- `packages/skill` - agent skill that calls `npx videosays`.
 
 ## Quick Start
 
 ```bash
-npx videosays-cli setup
-npx videosays-cli transcribe "https://www.tiktok.com/@creator/video/123456"
+npx videosays setup
+npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
 ```
 
 The CLI stores your API key in `~/.videosays`. You can also provide it through `VIDEOSAYS_API_KEY`.
@@ -37,7 +37,7 @@ Videosays is intended for videos you own, created, or have permission to process
 
 - Website: https://videosays.com
 - API: https://api.videosays.com
-- CLI package: `videosays-cli`
+- CLI package: `videosays`
 
 ## License
 

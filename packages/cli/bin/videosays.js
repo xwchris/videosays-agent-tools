@@ -368,7 +368,7 @@ async function cmdHistory(limit = 10) {
 }
 
 function showHelp() {
-  console.log(`videosays-cli v${VERSION}
+  console.log(`videosays v${VERSION}
 
 Usage:
   videosays setup

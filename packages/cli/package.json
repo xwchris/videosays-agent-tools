@@ -1,11 +1,10 @@
 {
-  "name": "videosays-cli",
+  "name": "videosays",
   "version": "1.0.0",
   "description": "Videosays CLI - authorized video transcription from the command line",
   "type": "module",
   "bin": {
-    "videosays": "./bin/videosays.js",
-    "videosays-cli": "./bin/videosays.js"
+    "videosays": "./bin/videosays.js"
   },
   "files": [
     "bin",

@@ -11,7 +11,7 @@ sendsDataTo:
 
 # Videosays
 
-Use `npx videosays-cli` to turn authorized video content into transcript text. First use is guided through account registration or login.
+Use `npx videosays` to turn authorized video content into transcript text. First use is guided through account registration or login.
 
 > Important: This skill sends the user's API key and submitted video link/share text to Videosays. Only process videos the user owns, created, or has permission to process. Videosays is not a video downloading, watermark removal, or redistribution service.
 
@@ -25,7 +25,7 @@ Use `npx videosays-cli` to turn authorized video content into transcript text. F
 If no API key is configured, run:
 
 ```bash
-npx videosays-cli setup
+npx videosays setup
 ```
 
 The CLI saves the API key to `~/.videosays`.
@@ -34,16 +34,16 @@ The CLI saves the API key to `~/.videosays`.
 
 ```bash
 # Transcribe a video link or share text
-npx videosays-cli transcribe "https://www.tiktok.com/@creator/video/123456"
+npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
 
 # Specify a language
-npx videosays-cli transcribe "https://v.douyin.com/xxxxx/" zh-CN
+npx videosays transcribe "https://v.douyin.com/xxxxx/" zh-CN
 
 # Query credits
-npx videosays-cli balance
+npx videosays balance
 
 # View recent transcription history
-npx videosays-cli history
+npx videosays history
 ```
 
 ## Supported Languages
@@ -58,10 +58,10 @@ npx videosays-cli history
 
 ## Data Flow
 
-This skill calls `npx videosays-cli`, which sends the submitted video link/share text and API key to `https://api.videosays.com` for transcription. Results are returned as transcript text.
+This skill calls `npx videosays`, which sends the submitted video link/share text and API key to `https://api.videosays.com` for transcription. Results are returned as transcript text.
 
 ## Links
 
 - Website: https://videosays.com
 - API: https://api.videosays.com
-- CLI package: https://www.npmjs.com/package/videosays-cli
+- CLI package: https://www.npmjs.com/package/videosays
