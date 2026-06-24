@@ -1,0 +1,23 @@
+{
+  "name": "videosays-agent-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Videosays CLI and agent skill for authorized video transcription",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "help": "node packages/cli/bin/videosays.js help",
+    "cli": "node packages/cli/bin/videosays.js"
+  },
+  "keywords": [
+    "videosays",
+    "transcription",
+    "speech-to-text",
+    "cli",
+    "agent-skill"
+  ],
+  "author": "xwchris",
+  "license": "MIT"
+}

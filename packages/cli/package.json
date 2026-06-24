@@ -1,0 +1,33 @@
+{
+  "name": "videosays-cli",
+  "version": "1.0.0",
+  "description": "Videosays CLI - authorized video transcription from the command line",
+  "type": "module",
+  "bin": {
+    "videosays": "./bin/videosays.js",
+    "videosays-cli": "./bin/videosays.js"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "videosays",
+    "video",
+    "transcription",
+    "speech-to-text",
+    "caption",
+    "cli"
+  ],
+  "author": "xwchris",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xwchris/videosays-agent-tools.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://videosays.com"
+}
