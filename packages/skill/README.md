@@ -1,11 +1,15 @@
 # Videosays Skill
 
+Video to text, speech-to-text, subtitle extraction, caption transcription, and short-video transcript skill for agent workflows.
+
 Videosays agent skill for video transcription.
 
 Use this skill when a user asks to:
 
 - Transcribe a video link into text.
+- Convert short videos to transcript text.
 - Extract spoken content from a video.
+- Generate subtitle/caption text from supported video links.
 - Query Videosays credit balance.
 - View recent transcription history.
 

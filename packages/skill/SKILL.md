@@ -1,7 +1,8 @@
 ---
 name: videosays
 version: 1.0.0
-description: Videosays video transcription. Use when the user asks to transcribe a video link, extract spoken text, check credit balance, or view transcription history. Only submit videos the user owns, created, or has permission to process.
+description: Videosays video to text transcription, speech-to-text, subtitle extraction, caption transcription, Douyin/TikTok/YouTube/Xiaohongshu video transcript. Use when the user asks to transcribe a video link, extract spoken text, generate subtitles, check credit balance, or view transcription history. Only submit videos the user owns, created, or has permission to process.
+license: MIT-0
 requires:
   binaries:
     - npx
@@ -9,9 +10,9 @@ sendsDataTo:
   - https://api.videosays.com
 ---
 
-# Videosays
+# Videosays - Video to Text Transcription
 
-Use `npx videosays` to turn authorized video content into transcript text. First use is guided through account registration or login.
+Use `npx videosays` to turn authorized video content into transcript text. Search terms this skill covers include video to text, video transcription, speech to text, subtitle extraction, caption transcription, Douyin transcription, TikTok transcription, YouTube transcription, Xiaohongshu transcription, and short-video transcript. First use is guided through account registration or login.
 
 > Important: This skill sends the user's API key and submitted video link/share text to Videosays. Only process videos the user owns, created, or has permission to process. Videosays is not a video downloading, watermark removal, or redistribution service.
 
