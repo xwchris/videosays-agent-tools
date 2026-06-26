@@ -47,8 +47,8 @@ Use the simplest command that matches the user's requested output. By default th
 # Transcribe a video link or share text
 npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
 
-# Specify a language
-npx videosays transcribe "https://v.douyin.com/xxxxx/" zh-CN
+# Explicitly request plain text, the default output
+npx videosays transcribe "https://v.douyin.com/xxxxx/" --format text
 
 # Include timestamps for each segment
 npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format timeline
@@ -86,16 +86,6 @@ npx videosays status "<task-id>" --format srt
 ```
 
 Repeat until the command prints transcript/subtitle content or exits with an error.
-
-## Supported Languages
-
-| Code | Language |
-| ---- | -------- |
-| `zh-CN` | Simplified Chinese |
-| `zh-TW` | Traditional Chinese |
-| `en` | English |
-| `ja` | Japanese |
-| `ko` | Korean |
 
 ## Data Flow
 

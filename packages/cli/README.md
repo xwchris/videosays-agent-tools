@@ -32,7 +32,8 @@ videosays login
 videosays login --api-key <api-key>
 videosays logout
 videosays whoami
-videosays transcribe <video-link-or-share-text> [language]
+videosays transcribe <video-link-or-share-text>
+videosays transcribe <video-link-or-share-text> --format text
 videosays transcribe <video-link-or-share-text> --format timeline
 videosays transcribe <video-link-or-share-text> --format srt
 videosays transcribe <video-link-or-share-text> --format vtt
@@ -45,11 +46,12 @@ videosays help
 
 ## Transcription Output
 
-By default, `transcribe` and `status` print only the transcript text to stdout.
+By default, `transcribe` and `status` use `--format text` and print only the transcript text to stdout.
 
 Use `--format` when the user asks for a different result shape:
 
 ```bash
+videosays transcribe "<video-link>" --format text
 videosays transcribe "<video-link>" --format timeline
 videosays transcribe "<video-link>" --format srt
 videosays transcribe "<video-link>" --format vtt

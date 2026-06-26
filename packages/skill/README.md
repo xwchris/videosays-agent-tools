@@ -33,7 +33,7 @@ The CLI prints a browser authorization URL. Open it, sign in, authorize the CLI,
 
 ```bash
 npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
-npx videosays transcribe "https://v.douyin.com/xxxxx/" zh-CN
+npx videosays transcribe "https://v.douyin.com/xxxxx/" --format text
 npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format timeline
 npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format srt
 npx videosays status "<task-id>" --format srt

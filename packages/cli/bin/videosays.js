@@ -338,9 +338,9 @@ status=${status || 'processing'}
 next=videosays status ${taskId}${format && format !== 'text' ? ` --format ${format}` : ''}`);
 }
 
-async function cmdTranscribe(input, language = 'zh-CN', args = []) {
+async function cmdTranscribe(input, args = []) {
   if (!input) {
-    error('Please provide a video link or share text.\n  Usage: videosays transcribe <video-link-or-share-text> [language]');
+    error('Please provide a video link or share text.\n  Usage: videosays transcribe <video-link-or-share-text>');
   }
 
   const format = parseResultFormat(args);
@@ -349,7 +349,7 @@ async function cmdTranscribe(input, language = 'zh-CN', args = []) {
 
   progress(`Submitting transcription: ${input.substring(0, 120)}`);
 
-  const task = await apiCall('POST', '/api/v1/transcribe', { input, language });
+  const task = await apiCall('POST', '/api/v1/transcribe', { input });
   const taskId = task.taskId || task.id;
   if (!taskId) error('Task creation failed. No taskId returned.');
 
@@ -445,7 +445,8 @@ Usage:
   videosays login --api-key <api-key>
   videosays logout
   videosays whoami
-  videosays transcribe <video-link-or-share-text> [language]
+  videosays transcribe <video-link-or-share-text>
+  videosays transcribe <video-link-or-share-text> --format text
   videosays transcribe <video-link-or-share-text> --format timeline
   videosays transcribe <video-link-or-share-text> --format srt
   videosays status <taskId>
@@ -466,7 +467,7 @@ Configuration:
 Examples:
   videosays login
   videosays transcribe "https://www.tiktok.com/@creator/video/123456"
-  videosays transcribe "https://v.douyin.com/xxxxx/" zh-CN
+  videosays transcribe "https://v.douyin.com/xxxxx/" --format text
   videosays transcribe "https://v.douyin.com/xxxxx/" --format srt
   videosays status 123e4567-e89b-12d3-a456-426614174000
   videosays balance
@@ -506,7 +507,7 @@ switch (command) {
     break;
   case 'transcribe':
   case 'caption':
-    await cmdTranscribe(args[1], args[2]?.startsWith('--') ? 'zh-CN' : args[2], rawArgs);
+    await cmdTranscribe(args[1], rawArgs);
     break;
   case 'status':
     await cmdStatus(args[1], rawArgs);
@@ -525,7 +526,7 @@ switch (command) {
     break;
   default:
     if (command) {
-      await cmdTranscribe(command, args[1]?.startsWith('--') ? 'zh-CN' : args[1], rawArgs);
+      await cmdTranscribe(command, rawArgs);
     } else {
       showHelp();
     }

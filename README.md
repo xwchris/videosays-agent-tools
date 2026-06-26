@@ -23,7 +23,8 @@ videosays login
 videosays login --api-key <api-key>
 videosays logout
 videosays whoami
-videosays transcribe <video-link-or-share-text> [language]
+videosays transcribe <video-link-or-share-text>
+videosays transcribe <video-link-or-share-text> --format text
 videosays transcribe <video-link-or-share-text> --format timeline
 videosays transcribe <video-link-or-share-text> --format srt
 videosays transcribe <video-link-or-share-text> --format vtt
