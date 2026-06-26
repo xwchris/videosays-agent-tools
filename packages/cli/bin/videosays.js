@@ -5,7 +5,7 @@ import { homedir, platform } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const API_URL = (process.env.VIDEOSAYS_API_URL || 'https://api.videosays.com').replace(/\/$/, '');
 const CONFIG_FILE = join(homedir(), '.videosays');
 
@@ -23,11 +23,27 @@ function emitJson(payload) {
   console.log(JSON.stringify(payload, null, 2));
 }
 
+function normalizeError(message, details = {}) {
+  if (message && typeof message === 'object') {
+    return {
+      message: typeof message.message === 'string' ? message.message : JSON.stringify(message),
+      ...message,
+      ...details,
+    };
+  }
+
+  return {
+    message: String(message),
+    ...details,
+  };
+}
+
 function error(message, details = {}) {
+  const normalizedError = normalizeError(message, details);
   if (jsonMode) {
-    emitJson({ success: false, error: { message, ...details } });
+    emitJson({ success: false, error: normalizedError });
   } else {
-    console.error(colors.red(`Error: ${message}`));
+    console.error(colors.red(`Error: ${normalizedError.message}`));
   }
   process.exit(1);
 }
@@ -530,6 +546,9 @@ const command = args[0];
 
 switch (command) {
   case 'setup':
+  case 'register':
+    error(`Unknown command: ${command}. Use "videosays login".`);
+    break;
   case 'login':
     await cmdLogin(rawArgs);
     break;
