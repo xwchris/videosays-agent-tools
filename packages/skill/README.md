@@ -24,18 +24,17 @@ git clone https://github.com/xwchris/videosays-agent-tools.git
 ## First Use
 
 ```bash
-npx videosays setup
+npx videosays login
 ```
+
+The CLI prints a browser authorization URL. Open it, sign in, authorize the CLI, and the API key is saved to `~/.videosays`.
 
 ## Examples
 
 ```bash
-npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
-npx videosays transcribe "https://v.douyin.com/xxxxx/" zh-CN
-npx videosays balance
-npx videosays history 10
+npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --json
+npx videosays transcribe "https://v.douyin.com/xxxxx/" zh-CN --json
+npx videosays status "<task-id>" --json
+npx videosays balance --json
+npx videosays history 10 --json
 ```
-
-## Compliance Note
-
-Only submit videos the user owns, created, or has permission to process. Videosays does not provide video downloading, watermark removal, or redistribution.

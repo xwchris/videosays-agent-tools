@@ -1,7 +1,7 @@
 {
   "name": "videosays",
   "version": "1.0.0",
-  "description": "Videosays CLI - authorized video transcription from the command line",
+  "description": "Videosays CLI for video link and share text transcription",
   "type": "module",
   "bin": {
     "videosays": "./bin/videosays.js"

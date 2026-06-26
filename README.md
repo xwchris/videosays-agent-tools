@@ -1,6 +1,6 @@
 # Videosays Agent Tools
 
-Videosays command-line and agent skill packages for turning authorized video content into clean transcript text.
+Videosays command-line and agent skill packages for turning video links and share text into clean transcript text.
 
 This repository contains:
 
@@ -10,8 +10,8 @@ This repository contains:
 ## Quick Start
 
 ```bash
-npx videosays setup
-npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
+npx videosays login
+npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --json
 ```
 
 The CLI stores your API key in `~/.videosays`. You can also provide it through `VIDEOSAYS_API_KEY`.
@@ -19,19 +19,18 @@ The CLI stores your API key in `~/.videosays`. You can also provide it through `
 ## Commands
 
 ```bash
-videosays setup
-videosays register
 videosays login
+videosays login --api-key <api-key>
+videosays logout
+videosays whoami
 videosays transcribe <video-link-or-share-text> [language]
+videosays transcribe <video-link-or-share-text> --json
+videosays transcribe <video-link-or-share-text> --no-wait
 videosays status <taskId>
 videosays balance
 videosays history [limit]
 videosays help
 ```
-
-## Compliance Note
-
-Videosays is intended for videos you own, created, or have permission to process. It does not provide a video downloading, watermark removal, or redistribution service. Users are responsible for ensuring they have the necessary rights to submit content for transcription.
 
 ## Links
 

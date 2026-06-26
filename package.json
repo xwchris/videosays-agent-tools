@@ -2,7 +2,7 @@
   "name": "videosays-agent-tools",
   "version": "1.0.0",
   "private": true,
-  "description": "Videosays CLI and agent skill for authorized video transcription",
+  "description": "Videosays CLI and agent skill for video link transcription",
   "type": "module",
   "workspaces": [
     "packages/*"
