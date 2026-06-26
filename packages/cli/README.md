@@ -69,6 +69,15 @@ next=videosays status <task-id>
 
 Run the `next` command later until transcript text or the requested format is returned.
 
+Errors are printed to stderr and exit non-zero:
+
+```text
+Error: 余额不足，请充值后再提交任务。
+Code: insufficient_credits
+Next: videosays balance
+Recharge: https://videosays.com/dashboard/billing
+```
+
 ## Configuration
 
 The API key is saved to `~/.videosays` by default.

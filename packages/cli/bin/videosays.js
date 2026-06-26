@@ -10,6 +10,7 @@ const API_URL = (process.env.VIDEOSAYS_API_URL || 'https://api.videosays.com').r
 const CONFIG_FILE = join(homedir(), '.videosays');
 const DEFAULT_TRANSCRIBE_WAIT_SECONDS = 120;
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
+const RECHARGE_URL = 'https://videosays.com/dashboard/billing';
 
 const colors = {
   red: (s) => `\x1b[0;31m${s}\x1b[0m`,
@@ -37,7 +38,31 @@ function normalizeError(message, details = {}) {
 function error(message, details = {}) {
   const normalizedError = normalizeError(message, details);
   console.error(colors.red(`Error: ${normalizedError.message}`));
+  if (normalizedError.code) {
+    console.error(`Code: ${normalizedError.code}`);
+  }
+  if (normalizedError.next) {
+    console.error(`Next: ${normalizedError.next}`);
+  }
+  if (normalizedError.rechargeUrl) {
+    console.error(`Recharge: ${normalizedError.rechargeUrl}`);
+  }
   process.exit(1);
+}
+
+function taskError(task, fallbackMessage = 'Transcription failed') {
+  const taskErrorValue = task?.error && typeof task.error === 'object' ? task.error : null;
+  const code = taskErrorValue?.code ?? task?.errorCode ?? null;
+  const message = taskErrorValue?.message ?? task?.errorMessage ?? fallbackMessage;
+
+  return {
+    message,
+    code,
+    ...(code === 'insufficient_credits' ? {
+      next: 'videosays balance',
+      rechargeUrl: RECHARGE_URL,
+    } : {}),
+  };
 }
 
 function success(message) {
@@ -267,10 +292,6 @@ function getTaskText(task) {
   return task?.result?.text ?? task?.resultText ?? '';
 }
 
-function getTaskError(task) {
-  return task?.error?.message ?? task?.errorMessage ?? 'Unknown error';
-}
-
 function getTaskSegments(task) {
   return task?.result?.segments ?? task?.segments ?? null;
 }
@@ -375,7 +396,7 @@ async function cmdTranscribe(input, args = []) {
     }
 
     if (poll.status === 'failed') {
-      error(`Transcription failed: ${getTaskError(poll)}`);
+      error(taskError(poll));
     }
 
     progress(`Waiting... (${elapsed}s, status: ${poll.status})`);
@@ -396,7 +417,7 @@ async function cmdStatus(taskId, args = []) {
   }
 
   if (task.status === 'failed') {
-    error(`Transcription failed: ${getTaskError(task)}`);
+    error(taskError(task));
   }
 
   outputPendingTask(task.taskId || task.id || taskId, task.status, format);

@@ -87,6 +87,23 @@ npx videosays status "<task-id>" --format srt
 
 Repeat until the command prints transcript/subtitle content or exits with an error.
 
+## Errors
+
+If a command exits non-zero, read stderr. Do not treat stdout as transcript content.
+
+The CLI prints stable error details when available:
+
+```text
+Error: <message>
+Code: <error-code>
+Next: <recommended-command>
+Recharge: <billing-url>
+```
+
+If `Code: insufficient_credits` appears, do not retry transcription. Tell the user their balance is insufficient, suggest `npx videosays balance`, and provide the recharge URL if present.
+
+For media or link errors such as `media_resolve_failed`, `media_unavailable`, or `media_inaccessible`, tell the user the link could not be processed and ask for another video link.
+
 ## Data Flow
 
 This skill calls `npx videosays`, which sends the submitted video link/share text and API key to `https://api.videosays.com` for transcription. Transcript text or the requested timestamp/subtitle format is returned on stdout.
