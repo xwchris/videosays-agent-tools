@@ -1,10 +1,10 @@
 {
   "name": "videosays",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Videosays CLI for video link and share text transcription",
   "type": "module",
   "bin": {
-    "videosays": "./bin/videosays.js"
+    "videosays": "bin/videosays.js"
   },
   "files": [
     "bin",
