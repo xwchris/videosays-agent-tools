@@ -8,6 +8,8 @@ import { spawn } from 'node:child_process';
 const VERSION = '1.0.1';
 const API_URL = (process.env.VIDEOSAYS_API_URL || 'https://api.videosays.com').replace(/\/$/, '');
 const CONFIG_FILE = join(homedir(), '.videosays');
+const DEFAULT_TRANSCRIBE_WAIT_SECONDS = 120;
+const DEFAULT_POLL_INTERVAL_SECONDS = 5;
 
 const colors = {
   red: (s) => `\x1b[0;31m${s}\x1b[0m`,
@@ -16,12 +18,6 @@ const colors = {
   cyan: (s) => `\x1b[0;36m${s}\x1b[0m`,
   bold: (s) => `\x1b[1m${s}\x1b[0m`,
 };
-
-let jsonMode = false;
-
-function emitJson(payload) {
-  console.log(JSON.stringify(payload, null, 2));
-}
 
 function normalizeError(message, details = {}) {
   if (message && typeof message === 'object') {
@@ -40,20 +36,20 @@ function normalizeError(message, details = {}) {
 
 function error(message, details = {}) {
   const normalizedError = normalizeError(message, details);
-  if (jsonMode) {
-    emitJson({ success: false, error: normalizedError });
-  } else {
-    console.error(colors.red(`Error: ${normalizedError.message}`));
-  }
+  console.error(colors.red(`Error: ${normalizedError.message}`));
   process.exit(1);
 }
 
 function success(message) {
-  if (!jsonMode) console.log(colors.green(message));
+  console.log(colors.green(message));
 }
 
 function info(message) {
-  if (!jsonMode) console.log(message);
+  console.log(message);
+}
+
+function progress(message) {
+  console.error(message);
 }
 
 function sleep(ms) {
@@ -113,10 +109,9 @@ function saveConfig(apiKey, email = null) {
 function getApiKey() {
   const config = loadConfig();
   if (!config?.apiKey) {
-    const loginCommand = jsonMode ? 'videosays login' : colors.bold('videosays login');
     error(`Missing API key.
 
-  Run ${loginCommand} to connect your account in the browser.
+  Run ${colors.bold('videosays login')} to connect your account in the browser.
   Or set: export VIDEOSAYS_API_KEY="your_api_key"`);
   }
   return config;
@@ -179,7 +174,6 @@ function stripFlags(args, flagsWithValues = []) {
   const result = [];
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
-    if (arg === '--json') continue;
     if (flagsWithValues.includes(arg)) {
       index += 1;
       continue;
@@ -201,11 +195,8 @@ async function cmdLogin(args = []) {
   if (explicitApiKey) {
     await apiCall('GET', '/api/v1/credits', null, { apiKey: explicitApiKey });
     saveConfig(explicitApiKey);
-    if (jsonMode) emitJson({ success: true, configFile: CONFIG_FILE });
-    else {
-      success('Logged in with API key.');
-      success(`API key saved to ${CONFIG_FILE}`);
-    }
+    success('Logged in with API key.');
+    success(`API key saved to ${CONFIG_FILE}`);
     return;
   }
 
@@ -236,17 +227,9 @@ async function cmdLogin(args = []) {
     if (status === 409 || data.status === 'consumed') error('Login code was already used. Run videosays login again.');
     if (data.status === 'authorized' && data.apiKey) {
       saveConfig(data.apiKey, data.user?.email || null);
-      if (jsonMode) {
-        emitJson({
-          success: true,
-          user: data.user ?? null,
-          configFile: CONFIG_FILE,
-        });
-      } else {
-        success('Logged in.');
-        success(`API key saved to ${CONFIG_FILE}`);
-        if (data.user?.email) info(`Account: ${data.user.email}`);
-      }
+      success('Logged in.');
+      success(`API key saved to ${CONFIG_FILE}`);
+      if (data.user?.email) info(`Account: ${data.user.email}`);
       return;
     }
 
@@ -263,15 +246,6 @@ async function cmdLogout() {
     unlinkSync(CONFIG_FILE);
   }
 
-  if (jsonMode) {
-    emitJson({
-      success: true,
-      removedConfigFile: true,
-      envStillSet: Boolean(process.env.VIDEOSAYS_API_KEY),
-    });
-    return;
-  }
-
   success('Logged out from local config.');
   if (config?.source === 'env' || process.env.VIDEOSAYS_API_KEY) {
     info('VIDEOSAYS_API_KEY is still set in the environment.');
@@ -281,16 +255,6 @@ async function cmdLogout() {
 async function cmdWhoami() {
   const config = getApiKey();
   const credits = await apiCall('GET', '/api/v1/credits');
-
-  if (jsonMode) {
-    emitJson({
-      success: true,
-      email: config.email,
-      source: config.source,
-      credits,
-    });
-    return;
-  }
 
   success('Authenticated');
   if (config.email) info(`   Account: ${config.email}`);
@@ -307,43 +271,71 @@ function getTaskError(task) {
   return task?.error?.message ?? task?.errorMessage ?? 'Unknown error';
 }
 
-function getTaskDurationMinutes(task) {
-  const creditMinutes = task?.billing?.creditMinutes ?? task?.creditCost;
-  if (creditMinutes != null) return creditMinutes;
-  const durationSeconds = task?.video?.durationSeconds ?? task?.durationSeconds;
-  if (durationSeconds != null) return Math.ceil(durationSeconds / 6) / 10;
-  return null;
+function getTaskSegments(task) {
+  return task?.result?.segments ?? task?.segments ?? null;
 }
 
-function serializeTask(task) {
-  return {
-    success: true,
-    taskId: task?.taskId || task?.id || null,
-    status: task?.status || null,
-    input: task?.input || null,
-    platform: task?.video?.platform ?? task?.platform ?? null,
-    title: task?.video?.title ?? task?.title ?? null,
-    author: task?.video?.author ?? task?.author ?? null,
-    durationSeconds: task?.video?.durationSeconds ?? task?.durationSeconds ?? null,
-    creditMinutes: task?.billing?.creditMinutes ?? task?.creditMinutes ?? task?.creditCost ?? null,
-    sourceType: task?.result?.sourceType ?? task?.sourceType ?? null,
-    provider: task?.result?.provider ?? task?.provider ?? null,
-    text: getTaskText(task),
-    segments: task?.result?.segments ?? task?.segments ?? null,
-    error: task?.error ?? null,
-    createdAt: task?.createdAt ?? task?.created_at ?? null,
-    completedAt: task?.completedAt ?? task?.completed_at ?? null,
-  };
+function parseResultFormat(args = []) {
+  const value = optionValue(args, '--format', 'text')?.toLowerCase();
+  if (value === 'txt') return 'text';
+  if (['text', 'timeline', 'srt', 'vtt'].includes(value)) return value;
+  error(`Unsupported format: ${value}. Use text, timeline, srt, or vtt.`);
 }
 
-function printTaskSummary(task) {
-  const video = task.video ?? {};
-  if (video.platform) info(`   Platform: ${video.platform}`);
-  if (video.author) info(`   Author: ${video.author}`);
-  if (video.title) info(`   Title: ${video.title}`);
+function formatClock(seconds, separator) {
+  const totalMs = Math.max(0, Math.round(Number(seconds || 0) * 1000));
+  const ms = totalMs % 1000;
+  const totalSeconds = Math.floor(totalMs / 1000);
+  const s = totalSeconds % 60;
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const m = totalMinutes % 60;
+  const h = Math.floor(totalMinutes / 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}${separator}${String(ms).padStart(3, '0')}`;
+}
 
-  const duration = getTaskDurationMinutes(task);
-  if (duration != null) info(`   Billed duration: ${duration} minutes`);
+function requireSegments(task, format) {
+  const segments = getTaskSegments(task);
+  if (!Array.isArray(segments) || segments.length === 0) {
+    error(`This task has no timeline segments, so it cannot be output as ${format}.`);
+  }
+  return segments;
+}
+
+function formatTaskResult(task, format) {
+  if (format === 'text') return getTaskText(task) || '';
+
+  const segments = requireSegments(task, format);
+
+  if (format === 'timeline') {
+    return segments
+      .map((segment) => `[${formatClock(segment.start, '.')} - ${formatClock(segment.end, '.')}] ${segment.text ?? ''}`)
+      .join('\n');
+  }
+
+  if (format === 'srt') {
+    return segments
+      .map((segment, index) => `${index + 1}\n${formatClock(segment.start, ',')} --> ${formatClock(segment.end, ',')}\n${segment.text ?? ''}`)
+      .join('\n\n');
+  }
+
+  if (format === 'vtt') {
+    return `WEBVTT\n\n${segments
+      .map((segment) => `${formatClock(segment.start, '.')} --> ${formatClock(segment.end, '.')}\n${segment.text ?? ''}`)
+      .join('\n\n')}`;
+  }
+
+  return getTaskText(task) || '';
+}
+
+function outputTaskResult(task, format) {
+  console.log(formatTaskResult(task, format));
+}
+
+function outputPendingTask(taskId, status, format) {
+  console.log(`VIDEOSAYS_TASK_PENDING
+task_id=${taskId}
+status=${status || 'processing'}
+next=videosays status ${taskId}${format && format !== 'text' ? ` --format ${format}` : ''}`);
 }
 
 async function cmdTranscribe(input, language = 'zh-CN', args = []) {
@@ -351,105 +343,67 @@ async function cmdTranscribe(input, language = 'zh-CN', args = []) {
     error('Please provide a video link or share text.\n  Usage: videosays transcribe <video-link-or-share-text> [language]');
   }
 
-  const timeoutSeconds = Number(optionValue(args, '--timeout', '300')) || 300;
-  const intervalSeconds = Number(optionValue(args, '--poll-interval', '3')) || 3;
-  const noWait = hasFlag(args, '--no-wait');
+  const format = parseResultFormat(args);
+  const timeoutSeconds = Number(optionValue(args, '--timeout', String(DEFAULT_TRANSCRIBE_WAIT_SECONDS))) || DEFAULT_TRANSCRIBE_WAIT_SECONDS;
+  const intervalSeconds = Number(optionValue(args, '--poll-interval', String(DEFAULT_POLL_INTERVAL_SECONDS))) || DEFAULT_POLL_INTERVAL_SECONDS;
 
-  info(`Submitting transcription: ${colors.yellow(input.substring(0, 80))}`);
-  info(`   Language: ${language}`);
-  info('   Submitting...');
+  progress(`Submitting transcription: ${input.substring(0, 120)}`);
 
   const task = await apiCall('POST', '/api/v1/transcribe', { input, language });
   const taskId = task.taskId || task.id;
   if (!taskId) error('Task creation failed. No taskId returned.');
 
-  if (noWait || task.status === 'completed') {
-    if (jsonMode) emitJson(serializeTask(task));
-    else {
-      if (task.status === 'completed') {
-        console.log('');
-        success('Transcription completed.');
-      } else {
-        success(`Task submitted: ${taskId}`);
-      }
-      printTaskSummary(task);
-      const text = getTaskText(task);
-      if (text) {
-        console.log('');
-        info(colors.bold('Transcript:'));
-        console.log(text);
-      }
-    }
+  if (task.status === 'completed') {
+    outputTaskResult(task, format);
     return;
   }
 
   const startedAt = Date.now();
-  info(`   Task ID: ${taskId}`);
+  let lastStatus = task.status;
+  progress(`Task ID: ${taskId}`);
 
   while (Date.now() - startedAt < timeoutSeconds * 1000) {
-    await sleep(intervalSeconds * 1000);
+    const remainingMs = timeoutSeconds * 1000 - (Date.now() - startedAt);
+    await sleep(Math.min(intervalSeconds * 1000, Math.max(250, remainingMs)));
     const elapsed = Math.round((Date.now() - startedAt) / 1000);
     const poll = await apiCall('GET', `/api/v1/transcribe/${taskId}`);
+    lastStatus = poll.status;
 
     if (poll.status === 'completed') {
-      if (jsonMode) {
-        emitJson(serializeTask(poll));
-      } else {
-        console.log('');
-        success('Transcription completed.');
-        printTaskSummary(poll);
-        console.log('');
-        info(colors.bold('Transcript:'));
-        console.log(getTaskText(poll) || '(empty)');
-      }
+      outputTaskResult(poll, format);
       return;
     }
 
     if (poll.status === 'failed') {
-      if (jsonMode) {
-        emitJson(serializeTask(poll));
-        process.exit(1);
-      }
       error(`Transcription failed: ${getTaskError(poll)}`);
     }
 
-    info(`   Waiting... (${elapsed}s, status: ${poll.status})`);
+    progress(`Waiting... (${elapsed}s, status: ${poll.status})`);
   }
 
-  error(`Transcription timed out after ${timeoutSeconds}s. Task ID: ${taskId}`, { taskId });
+  outputPendingTask(taskId, lastStatus, format);
 }
 
-async function cmdStatus(taskId) {
+async function cmdStatus(taskId, args = []) {
   if (!taskId) error('Please provide taskId.\n  Usage: videosays status <taskId>');
 
+  const format = parseResultFormat(args);
   const task = await apiCall('GET', `/api/v1/transcribe/${taskId}`);
-  if (jsonMode) {
-    emitJson(serializeTask(task));
+
+  if (task.status === 'completed') {
+    outputTaskResult(task, format);
     return;
   }
 
-  success('Task status');
-  info(`   taskId: ${task.taskId || task.id}`);
-  info(`   status: ${task.status}`);
-  printTaskSummary(task);
-
-  if (task.error) info(`   error: ${getTaskError(task)}`);
-
-  const text = getTaskText(task);
-  if (text) {
-    console.log('');
-    info(colors.bold('Transcript:'));
-    console.log(text);
+  if (task.status === 'failed') {
+    error(`Transcription failed: ${getTaskError(task)}`);
   }
+
+  outputPendingTask(task.taskId || task.id || taskId, task.status, format);
 }
 
 async function cmdBalance() {
   const response = await apiCall('GET', '/api/v1/credits');
-
-  if (jsonMode) {
-    emitJson({ success: true, ...response });
-    return;
-  }
 
   success('Credit balance');
   console.log(`   Balance:    ${response.balance}`);
@@ -463,15 +417,6 @@ async function cmdHistory(limit = 10) {
   info('Fetching transcription history...');
   const response = await apiCall('GET', '/api/v1/history');
   const tasks = (response.tasks || []).slice(0, Math.max(1, limit));
-
-  if (jsonMode) {
-    emitJson({
-      success: true,
-      tasks: tasks.map(serializeTask),
-      pagination: response.pagination ?? null,
-    });
-    return;
-  }
 
   console.log('');
   info(`Showing recent ${tasks.length} task(s):`);
@@ -501,11 +446,12 @@ Usage:
   videosays logout
   videosays whoami
   videosays transcribe <video-link-or-share-text> [language]
-  videosays transcribe <video-link-or-share-text> --json
-  videosays transcribe <video-link-or-share-text> --no-wait
-  videosays status <taskId> [--json]
-  videosays balance [--json]
-  videosays history [limit] [--json]
+  videosays transcribe <video-link-or-share-text> --format timeline
+  videosays transcribe <video-link-or-share-text> --format srt
+  videosays status <taskId>
+  videosays status <taskId> --format vtt
+  videosays balance
+  videosays history [limit]
   videosays --version
   videosays help
 
@@ -519,9 +465,10 @@ Configuration:
 
 Examples:
   videosays login
-  videosays transcribe "https://www.tiktok.com/@creator/video/123456" --json
+  videosays transcribe "https://www.tiktok.com/@creator/video/123456"
   videosays transcribe "https://v.douyin.com/xxxxx/" zh-CN
-  videosays status 123e4567-e89b-12d3-a456-426614174000 --json
+  videosays transcribe "https://v.douyin.com/xxxxx/" --format srt
+  videosays status 123e4567-e89b-12d3-a456-426614174000
   videosays balance
 
 Website: https://videosays.com
@@ -529,7 +476,6 @@ API:     ${API_URL}`);
 }
 
 const rawArgs = process.argv.slice(2);
-jsonMode = rawArgs.includes('--json');
 
 if (rawArgs.includes('--version') || rawArgs.includes('-v')) {
   console.log(VERSION);
@@ -541,7 +487,7 @@ if (rawArgs.includes('--help') || rawArgs.includes('-h')) {
   process.exit(0);
 }
 
-const args = stripFlags(rawArgs, ['--api-key', '--timeout', '--poll-interval']);
+const args = stripFlags(rawArgs, ['--api-key', '--timeout', '--poll-interval', '--format']);
 const command = args[0];
 
 switch (command) {
@@ -563,7 +509,7 @@ switch (command) {
     await cmdTranscribe(args[1], args[2]?.startsWith('--') ? 'zh-CN' : args[2], rawArgs);
     break;
   case 'status':
-    await cmdStatus(args[1]);
+    await cmdStatus(args[1], rawArgs);
     break;
   case 'balance':
   case 'credits':

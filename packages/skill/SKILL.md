@@ -41,27 +41,51 @@ Do not print or reveal the API key in responses.
 
 ## Commands
 
-Prefer `--json` for agent workflows so downstream steps can parse task IDs, status, text, and errors reliably.
+Use the simplest command that matches the user's requested output. By default the CLI prints only transcript text to stdout, which is the preferred agent workflow.
 
 ```bash
 # Transcribe a video link or share text
-npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --json
+npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
 
 # Specify a language
-npx videosays transcribe "https://v.douyin.com/xxxxx/" zh-CN --json
+npx videosays transcribe "https://v.douyin.com/xxxxx/" zh-CN
 
-# Submit without waiting for completion
-npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --no-wait --json
+# Include timestamps for each segment
+npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format timeline
 
-# Check a task
-npx videosays status "<task-id>" --json
+# Generate subtitle formats
+npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format srt
+npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format vtt
+
+# Check a task that is still running
+npx videosays status "<task-id>"
+npx videosays status "<task-id>" --format srt
 
 # Query credits
-npx videosays balance --json
+npx videosays balance
 
 # View recent transcription history
-npx videosays history --json
+npx videosays history
 ```
+
+## Pending Tasks
+
+Long videos may still be processing when `transcribe` returns. If stdout contains this block:
+
+```text
+VIDEOSAYS_TASK_PENDING
+task_id=<task-id>
+status=<status>
+next=videosays status <task-id>
+```
+
+Do not treat it as a final transcript. Extract `task_id`, wait a reasonable interval, then run the `next` command. If the original user requested a format, preserve it on status checks, for example:
+
+```bash
+npx videosays status "<task-id>" --format srt
+```
+
+Repeat until the command prints transcript/subtitle content or exits with an error.
 
 ## Supported Languages
 
@@ -75,7 +99,7 @@ npx videosays history --json
 
 ## Data Flow
 
-This skill calls `npx videosays`, which sends the submitted video link/share text and API key to `https://api.videosays.com` for transcription. Results are returned as JSON when `--json` is used.
+This skill calls `npx videosays`, which sends the submitted video link/share text and API key to `https://api.videosays.com` for transcription. Transcript text or the requested timestamp/subtitle format is returned on stdout.
 
 ## Links
 

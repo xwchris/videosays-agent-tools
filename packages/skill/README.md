@@ -32,9 +32,13 @@ The CLI prints a browser authorization URL. Open it, sign in, authorize the CLI,
 ## Examples
 
 ```bash
-npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --json
-npx videosays transcribe "https://v.douyin.com/xxxxx/" zh-CN --json
-npx videosays status "<task-id>" --json
-npx videosays balance --json
-npx videosays history 10 --json
+npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
+npx videosays transcribe "https://v.douyin.com/xxxxx/" zh-CN
+npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format timeline
+npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format srt
+npx videosays status "<task-id>" --format srt
+npx videosays balance
+npx videosays history 10
 ```
+
+If output contains `VIDEOSAYS_TASK_PENDING`, wait and run the printed `videosays status <task-id>` command until transcript content is returned.
