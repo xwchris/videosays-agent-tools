@@ -37,6 +37,10 @@ function normalizeError(message, details = {}) {
 
 function error(message, details = {}) {
   const normalizedError = normalizeError(message, details);
+  if (normalizedError.code === 'insufficient_credits') {
+    normalizedError.next ??= 'videosays balance';
+    normalizedError.rechargeUrl ??= RECHARGE_URL;
+  }
   console.error(colors.red(`Error: ${normalizedError.message}`));
   if (normalizedError.code) {
     console.error(`Code: ${normalizedError.code}`);
