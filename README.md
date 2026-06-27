@@ -65,10 +65,11 @@ clawhub skill publish skills/videosays --owner wegofuture
 SkillUse can install skills from GitHub-backed repositories:
 
 ```bash
-skilluse login
 skilluse repo add xwchris/videosays-agent-tools --path skills --branch main --default
-skilluse install videosays
+skilluse install videosays --agent codex --global
 ```
+
+The `--path skills` flag is required because this repository keeps the canonical skill at `skills/videosays/SKILL.md` for registry compatibility. Omit `--global` if you want SkillUse to install into the current project's local agent skill directory instead.
 
 ## Maintenance
 
