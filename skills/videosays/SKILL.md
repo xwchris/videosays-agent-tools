@@ -1,7 +1,7 @@
 ---
 name: videosays
-version: 1.0.2
-description: Videosays video to text transcription, speech-to-text, subtitle extraction, caption transcription, Douyin/TikTok/YouTube/Xiaohongshu video transcript. Use when the user asks to transcribe a video link, extract spoken text, generate subtitles, check credit balance, or view transcription history.
+version: 1.0.3
+description: Videosays video transcription, video to text, speech to text, subtitle extractor, caption transcription, YouTube transcript, TikTok transcript, Douyin transcript, Xiaohongshu transcript, and AI agent video transcription. Use when the user asks to transcribe a video link, extract spoken text, generate subtitles, check credit balance, or view transcription history.
 license: MIT-0
 requires:
   binaries:
