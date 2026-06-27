@@ -46,13 +46,18 @@ npx skills find videosays
 
 ### ClawHub / OpenClaw
 
-Publish the root skill after signing in to ClawHub:
+Install the published skill from the Wegofuture organization:
+
+```bash
+clawhub install @wegofuture/videosays
+clawhub inspect @wegofuture/videosays
+```
+
+Publish updates after signing in to ClawHub with access to the `wegofuture` publisher:
 
 ```bash
 clawhub login
-clawhub skill publish skills/videosays
-clawhub inspect videosays
-clawhub install videosays
+clawhub skill publish skills/videosays --owner wegofuture
 ```
 
 ### SkillUse
