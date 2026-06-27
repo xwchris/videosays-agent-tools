@@ -13,10 +13,21 @@
   },
   "keywords": [
     "videosays",
+    "ai-agent",
+    "agent",
     "transcription",
+    "video-to-text",
     "speech-to-text",
+    "subtitle",
+    "caption",
+    "douyin",
+    "tiktok",
+    "youtube",
+    "xiaohongshu",
     "cli",
-    "agent-skill"
+    "skill",
+    "agent-skill",
+    "SKILL.md"
   ],
   "author": "xwchris",
   "license": "MIT"
