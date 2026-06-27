@@ -1,6 +1,14 @@
 # videosays
 
-Videosays command-line tool for turning video links and share text into transcript text.
+AI-agent-friendly CLI for video transcription, video to text, speech to text, subtitle extraction, and transcript export.
+
+Videosays turns supported video links or share text into clean transcript text, timestamped timelines, SRT subtitles, and VTT subtitles.
+
+中文：Videosays 是面向 AI Agent 和命令行用户的视频转文字 CLI，支持把公开视频链接或分享文本转成纯文本、带时间轴文本、SRT 字幕和 VTT 字幕。
+
+Supported platforms include Douyin, TikTok, Xiaohongshu, Bilibili, YouTube, and Kuaishou. Availability can vary by source video accessibility, region, platform restrictions, and whether captions or transcribable audio are available.
+
+支持平台包括抖音、TikTok、小红书、Bilibili、YouTube、快手。实际可用性会受视频访问权限、地区、平台限制、字幕或音频可获取性影响。
 
 ## Install
 
@@ -23,6 +31,9 @@ videosays login
 
 # Transcribe a video link or share text
 videosays transcribe "https://www.tiktok.com/@creator/video/123456"
+
+# Export subtitles
+videosays transcribe "https://www.bilibili.com/video/BV1234567890" --format srt
 ```
 
 ## Commands
@@ -57,6 +68,20 @@ videosays transcribe "<video-link>" --format srt
 videosays transcribe "<video-link>" --format vtt
 videosays status "<task-id>" --format srt
 ```
+
+Formats:
+
+- `text`: plain transcript, default
+- `timeline`: timestamped transcript segments
+- `srt`: SRT subtitle file content
+- `vtt`: VTT subtitle file content
+
+输出格式：
+
+- `text`: 纯文本，默认格式
+- `timeline`: 带时间轴分段
+- `srt`: SRT 字幕
+- `vtt`: VTT 字幕
 
 If a task is still running, the command prints a pending block:
 

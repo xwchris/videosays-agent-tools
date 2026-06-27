@@ -5,7 +5,7 @@ import { homedir, platform } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 const API_URL = (process.env.VIDEOSAYS_API_URL || 'https://api.videosays.com').replace(/\/$/, '');
 const CONFIG_FILE = join(homedir(), '.videosays');
 const DEFAULT_TRANSCRIBE_WAIT_SECONDS = 120;

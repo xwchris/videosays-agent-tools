@@ -1,6 +1,14 @@
 # Videosays Agent Tools
 
-Videosays command-line and agent skill packages for turning video links and share text into clean transcript text.
+AI-agent-friendly CLI and `SKILL.md` package for video transcription, video to text, speech to text, subtitle extraction, and transcript export.
+
+Videosays turns supported video links or share text into clean transcript text, timestamped timelines, SRT subtitles, and VTT subtitles. It is built for humans using a terminal and for AI agents using a skill.
+
+中文：Videosays 是面向 AI Agent 和命令行用户的视频转文字工具，支持把公开视频链接或分享文本转成纯文本、带时间轴文本、SRT 字幕和 VTT 字幕。
+
+Supported platforms include Douyin, TikTok, Xiaohongshu, Bilibili, YouTube, and Kuaishou. Availability can vary by source video accessibility, region, platform restrictions, and whether captions or transcribable audio are available.
+
+支持平台包括抖音、TikTok、小红书、Bilibili、YouTube、快手。实际可用性会受视频访问权限、地区、平台限制、字幕或音频可获取性影响。
 
 This repository contains:
 
@@ -13,9 +21,12 @@ This repository contains:
 ```bash
 npx videosays login
 npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
+npx videosays transcribe "https://www.bilibili.com/video/BV1234567890" --format srt
 ```
 
 The CLI stores your API key in `~/.videosays`. You can also provide it through `VIDEOSAYS_API_KEY`.
+
+首次使用会打开浏览器授权，CLI 会把 API key 保存到 `~/.videosays`。也可以通过 `VIDEOSAYS_API_KEY` 环境变量提供。
 
 ## Agent Skill
 
@@ -31,7 +42,34 @@ Or install the skill from this repository:
 npx skills add xwchris/videosays-agent-tools
 ```
 
+Install through ClawHub or SkillUse:
+
+```bash
+clawhub install @wegofuture/videosays
+skilluse repo add xwchris/videosays-agent-tools --path skills --branch main --default
+skilluse install videosays --agent codex --global
+```
+
 `skills/videosays/SKILL.md` is the canonical skill entry for registry distribution. The root `SKILL.md` and the website copy at `https://videosays.com/SKILL.md` should stay byte-for-byte in sync with it.
+
+`skills/videosays/SKILL.md` 是分发平台使用的 canonical skill。根目录 `SKILL.md` 和网站公开版本 `https://videosays.com/SKILL.md` 需要保持同步。
+
+## Output Formats
+
+```bash
+videosays transcribe "<video-link-or-share-text>" --format text      # plain transcript, default
+videosays transcribe "<video-link-or-share-text>" --format timeline  # timestamped segments
+videosays transcribe "<video-link-or-share-text>" --format srt       # SRT subtitles
+videosays transcribe "<video-link-or-share-text>" --format vtt       # VTT subtitles
+videosays status "<task-id>" --format srt
+```
+
+输出格式：
+
+- `text`: 纯文本，默认格式
+- `timeline`: 带时间轴分段
+- `srt`: SRT 字幕
+- `vtt`: VTT 字幕
 
 ## Skill Distribution
 
