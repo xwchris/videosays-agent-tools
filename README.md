@@ -1,5 +1,9 @@
 # Videosays Agent Tools
 
+[![npm version](https://img.shields.io/npm/v/videosays?label=npm%20videosays)](https://www.npmjs.com/package/videosays)
+[![license](https://img.shields.io/npm/l/videosays)](./LICENSE)
+[![Node.js](https://img.shields.io/node/v/videosays)](https://www.npmjs.com/package/videosays)
+
 AI-agent-friendly CLI and `SKILL.md` package for video transcription, video to text, speech to text, subtitle extraction, and transcript export.
 
 Videosays turns supported video links or share text into clean transcript text, timestamped timelines, SRT subtitles, and VTT subtitles. It is built for humans using a terminal and for AI agents using a skill.
