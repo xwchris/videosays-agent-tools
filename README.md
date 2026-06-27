@@ -5,8 +5,7 @@ Videosays command-line and agent skill packages for turning video links and shar
 This repository contains:
 
 - `packages/cli` - npm CLI package, exposed as the `videosays` command.
-- `SKILL.md` - root agent skill for GitHub-based discovery and direct installs.
-- `packages/skill` - packaged copy of the agent skill that calls `npx videosays`.
+- `skills/videosays` - agent skill that calls `npx videosays`.
 
 ## Quick Start
 
@@ -31,13 +30,13 @@ Or install the skill from this repository:
 npx skills add xwchris/videosays-agent-tools
 ```
 
-The root `SKILL.md` is the canonical skill entry for GitHub-based registries such as `skills.sh`. Keep `packages/skill/SKILL.md` and the website copy at `https://videosays.com/SKILL.md` in sync with it.
+`skills/videosays/SKILL.md` is the canonical skill entry for registry distribution. Keep the website copy at `https://videosays.com/SKILL.md` in sync with it.
 
 ## Skill Distribution
 
 ### skills.sh / npx skills
 
-`skills.sh` discovers skills from public GitHub repositories. This repository exposes `SKILL.md` at the root so it can be installed directly:
+`skills.sh` discovers skills from public GitHub repositories. This repository uses the standard `skills/videosays/SKILL.md` layout:
 
 ```bash
 npx skills add xwchris/videosays-agent-tools
@@ -50,15 +49,9 @@ Publish the root skill after signing in to ClawHub:
 
 ```bash
 clawhub login
-clawhub skill publish .
+clawhub skill publish skills/videosays
 clawhub inspect videosays
 clawhub install videosays
-```
-
-If the registry expects a skill directory instead of the repository root, publish `packages/skill`:
-
-```bash
-clawhub skill publish packages/skill
 ```
 
 ### SkillUse
