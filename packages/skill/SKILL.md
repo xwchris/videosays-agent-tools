@@ -44,6 +44,9 @@ Do not print or reveal the API key in responses.
 Use the simplest command that matches the user's requested output. By default the CLI prints only transcript text to stdout, which is the preferred agent workflow.
 
 ```bash
+# Check whether the CLI is already authenticated
+npx videosays whoami
+
 # Transcribe a video link or share text
 npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
 
@@ -67,6 +70,22 @@ npx videosays balance
 # View recent transcription history
 npx videosays history
 ```
+
+## Authentication Check
+
+Before the first transcription in a session, run:
+
+```bash
+npx videosays whoami
+```
+
+If it exits successfully, continue with transcription. If it exits non-zero because no API key is configured, run:
+
+```bash
+npx videosays login
+```
+
+Ask the user to complete the browser authorization URL printed by the CLI, then retry `npx videosays whoami`. Do not ask the user for their API key unless they explicitly want to provide one.
 
 ## Pending Tasks
 
