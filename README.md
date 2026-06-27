@@ -5,7 +5,8 @@ Videosays command-line and agent skill packages for turning video links and shar
 This repository contains:
 
 - `packages/cli` - npm CLI package, exposed as the `videosays` command.
-- `skills/videosays` - agent skill that calls `npx videosays`.
+- `skills/videosays` - canonical agent skill that calls `npx videosays`.
+- `SKILL.md` - root copy for directories that require a repository-root skill file, such as SkillsLLM.
 
 ## Quick Start
 
@@ -30,7 +31,7 @@ Or install the skill from this repository:
 npx skills add xwchris/videosays-agent-tools
 ```
 
-`skills/videosays/SKILL.md` is the canonical skill entry for registry distribution. Keep the website copy at `https://videosays.com/SKILL.md` in sync with it.
+`skills/videosays/SKILL.md` is the canonical skill entry for registry distribution. The root `SKILL.md` and the website copy at `https://videosays.com/SKILL.md` should stay byte-for-byte in sync with it.
 
 ## Skill Distribution
 
@@ -68,6 +69,14 @@ If publishing through SkillUse, use the authenticated GitHub account with write 
 
 ```bash
 skilluse publish --repo xwchris/videosays-agent-tools
+```
+
+### SkillsLLM
+
+SkillsLLM expects a `SKILL.md` file at the root of the submitted GitHub repository. Submit this repository URL and use the root `SKILL.md` copy:
+
+```text
+https://github.com/xwchris/videosays-agent-tools
 ```
 
 ## Commands
