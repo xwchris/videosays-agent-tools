@@ -65,15 +65,18 @@ clawhub skill publish skills/videosays --owner wegofuture
 SkillUse can install skills from GitHub-backed repositories:
 
 ```bash
-skilluse auth login
-skilluse repo add xwchris/videosays-agent-tools
-skilluse skill install videosays
+skilluse login
+skilluse repo add xwchris/videosays-agent-tools --path skills --branch main --default
+skilluse install videosays
 ```
 
-If publishing through SkillUse, use the authenticated GitHub account with write access:
+## Maintenance
+
+Keep the canonical skill, root skill copy, and website copy in sync:
 
 ```bash
-skilluse publish --repo xwchris/videosays-agent-tools
+bash scripts/check-skill-sync.sh
+VIDEOSAYS_PUBLIC_SKILL_PATH=/path/to/video2txt/packages/web/public/SKILL.md bash scripts/check-skill-sync.sh
 ```
 
 ### SkillsLLM
