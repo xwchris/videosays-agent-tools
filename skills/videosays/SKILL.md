@@ -1,7 +1,7 @@
 ---
 name: videosays
 version: 1.0.3
-description: Videosays video transcription, video to text, speech to text, subtitle extractor, caption transcription, YouTube transcript, TikTok transcript, Instagram Reels transcript, Douyin transcript, Xiaohongshu transcript, and AI agent video transcription. Use when the user asks to transcribe a video link, extract spoken text, generate subtitles, check credit balance, or view transcription history.
+description: Videosays video transcription, video to text, speech to text, subtitle extractor, caption transcription, YouTube transcript, TikTok transcript, Instagram Reels transcript, X or Twitter video transcript, Douyin transcript, Xiaohongshu transcript, and AI agent video transcription. Use when the user asks to transcribe a video link, extract spoken text, generate subtitles, check credit balance, or view transcription history.
 license: MIT-0
 requires:
   binaries:
@@ -12,7 +12,7 @@ sendsDataTo:
 
 # Videosays - Video to Text Transcription
 
-Use `npx videosays` to turn video links or share text into transcript text. Search terms this skill covers include video to text, video transcription, speech to text, subtitle extraction, caption transcription, Douyin transcription, TikTok transcription, Instagram Reels transcription, YouTube transcription, Xiaohongshu transcription, and short-video transcript.
+Use `npx videosays` to turn video links or share text into transcript text. Search terms this skill covers include video to text, video transcription, speech to text, subtitle extraction, caption transcription, Douyin transcription, TikTok transcription, Instagram Reels transcription, X video transcription, Twitter video transcription, YouTube transcription, Xiaohongshu transcription, and short-video transcript.
 
 This skill sends the user's API key and submitted video link/share text to Videosays.
 

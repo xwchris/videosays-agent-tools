@@ -10,9 +10,9 @@ Videosays turns supported video links or share text into clean transcript text, 
 
 中文：Videosays 是面向 AI Agent 和命令行用户的视频转文字工具，支持把公开视频链接或分享文本转成纯文本、带时间轴文本、SRT 字幕和 VTT 字幕。
 
-Supported platforms include Douyin, TikTok, Instagram Reels, Xiaohongshu, Bilibili, YouTube, and Kuaishou. Availability can vary by source video accessibility, region, platform restrictions, and whether captions or transcribable audio are available.
+Supported platforms include Douyin, TikTok, Instagram Reels, X (Twitter), Xiaohongshu, Bilibili, YouTube, and Kuaishou. Availability can vary by source video accessibility, region, platform restrictions, and whether captions or transcribable audio are available.
 
-支持平台包括抖音、TikTok、Instagram Reels、小红书、Bilibili、YouTube、快手。实际可用性会受视频访问权限、地区、平台限制、字幕或音频可获取性影响。
+支持平台包括抖音、TikTok、Instagram Reels、X（Twitter）、小红书、Bilibili、YouTube、快手。实际可用性会受视频访问权限、地区、平台限制、字幕或音频可获取性影响。
 
 This repository contains:
 
