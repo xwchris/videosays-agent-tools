@@ -37,7 +37,7 @@ The CLI stores your API key in `~/.videosays`. You can also provide it through `
 Use Videosays from an AI agent by giving it this prompt:
 
 ```text
-Read https://videosays.com/SKILL.md and help me with Videosays.
+Read https://videosays.com/SKILL.md, install the Videosays Skill if your environment supports skills, and help me transcribe this public video link.
 ```
 
 Or install the skill from this repository:
