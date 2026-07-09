@@ -5,7 +5,7 @@ import { homedir, platform } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 
-const VERSION = '1.0.2';
+const VERSION = '1.0.3';
 const API_URL = (process.env.VIDEOSAYS_API_URL || 'https://api.videosays.com').replace(/\/$/, '');
 const CONFIG_FILE = join(homedir(), '.videosays');
 const DEFAULT_TRANSCRIBE_WAIT_SECONDS = 120;
@@ -174,6 +174,15 @@ async function apiCall(method, path, body, options = {}) {
   const { data } = await requestJson(method, path, body, { apiKey: config.apiKey });
   if (data.error) error(data.error);
   return data;
+}
+
+function getClientTracking() {
+  const surface = process.env.VIDEOSAYS_CLIENT_SURFACE || process.env.VIDEOSAYS_AGENT_SURFACE || 'agent_cli';
+  return {
+    clientSurface: surface,
+    clientName: process.env.VIDEOSAYS_CLIENT_NAME || 'videosays-cli',
+    clientVersion: VERSION,
+  };
 }
 
 function openBrowser(url) {
@@ -374,7 +383,7 @@ async function cmdTranscribe(input, args = []) {
 
   progress(`Submitting transcription: ${input.substring(0, 120)}`);
 
-  const task = await apiCall('POST', '/api/v1/transcribe', { input });
+  const task = await apiCall('POST', '/api/v1/transcribe', { input, tracking: getClientTracking() });
   const taskId = task.taskId || task.id;
   if (!taskId) error('Task creation failed. No taskId returned.');
 

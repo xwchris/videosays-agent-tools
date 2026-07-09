@@ -48,17 +48,17 @@ Use the simplest command that matches the user's requested output. By default th
 npx videosays whoami
 
 # Transcribe a video link or share text
-npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
+VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
 
 # Explicitly request plain text, the default output
-npx videosays transcribe "https://v.douyin.com/xxxxx/" --format text
+VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays transcribe "https://v.douyin.com/xxxxx/" --format text
 
 # Include timestamps for each segment
-npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format timeline
+VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format timeline
 
 # Generate subtitle formats
-npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format srt
-npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format vtt
+VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format srt
+VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format vtt
 
 # Check a task that is still running
 npx videosays status "<task-id>"
