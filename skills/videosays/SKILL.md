@@ -1,97 +1,26 @@
 ---
 name: videosays
-version: 1.1.1
-description: Videosays video transcription, video to text, speech to text, subtitle extractor, caption transcription, YouTube transcript, TikTok transcript, Instagram Reels transcript, X or Twitter video transcript, Douyin transcript, Xiaohongshu transcript, WeChat Channels transcript, and AI agent video transcription. Use when the user asks to transcribe a video link, extract spoken text, generate subtitles, check credit balance, or view transcription history.
+description: Videosays video transcription, video to text, speech to text, subtitle extraction, caption transcription, YouTube transcript, TikTok transcript, Instagram Reels transcript, X or Twitter video transcript, Douyin transcript, Xiaohongshu transcript, WeChat Channels transcript, and AI agent video transcription. Use when the user asks to transcribe one or more video links, extract spoken text, generate subtitles, check credit balance, or view transcription history.
 license: MIT-0
-requires:
-  binaries:
-    - npx
-sendsDataTo:
-  - https://api.videosays.com
+metadata:
+  version: 1.2.0
+  requires:
+    binaries:
+      - npx
+  sendsDataTo:
+    - https://api.videosays.com
 ---
 
-# Videosays - Video to Text Transcription
+# Videosays Video Transcription
 
-Use `npx videosays` to turn video links or share text into transcript text. Search terms this skill covers include video to text, video transcription, speech to text, subtitle extraction, caption transcription, Douyin transcription, TikTok transcription, Instagram Reels transcription, X video transcription, Twitter video transcription, YouTube transcription, Xiaohongshu transcription, WeChat Channels transcription, 微信视频号转文字, and short-video transcript.
-
-This skill sends the user's API key and submitted video link/share text to Videosays.
+Use `npx videosays` to submit video links and retrieve transcript text or subtitles. The CLI sends the configured API key and submitted links/share text to Videosays.
 
 ## Requirements
 
-- Node.js >= 18
+- Node.js 18 or newer
 - `npx`
 
-## First Use
-
-If no API key is configured, run:
-
-```bash
-npx videosays login
-```
-
-The CLI prints a browser authorization URL and waits. Ask the user to open that URL, sign in to Videosays, and authorize the CLI. The CLI then saves the API key to `~/.videosays`.
-
-If the user provides an API key directly, run:
-
-```bash
-npx videosays login --api-key "$VIDEOSAYS_API_KEY"
-```
-
-Do not print or reveal the API key in responses.
-
-## Commands
-
-Use the simplest command that matches the user's requested output. By default the CLI prints only transcript text to stdout, which is the preferred agent workflow.
-
-```bash
-# Check whether the CLI is already authenticated
-npx videosays whoami
-
-# Transcribe a video link or share text
-VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays transcribe "https://www.tiktok.com/@creator/video/123456"
-
-# Explicitly request plain text, the default output
-VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays transcribe "https://v.douyin.com/xxxxx/" --format text
-
-# Include timestamps for each segment
-VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format timeline
-
-# Generate subtitle formats
-VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format srt
-VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays transcribe "https://www.tiktok.com/@creator/video/123456" --format vtt
-
-# Check a task that is still running
-npx videosays status "<task-id>"
-npx videosays status "<task-id>" --format srt
-
-# Query credits
-npx videosays balance
-
-# View recent transcription history
-npx videosays history
-
-# Reliably process multiple links from a text file
-VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays batch links.txt --batch-id "<stable-batch-id>"
-
-# Resume or inspect an interrupted batch without creating new tasks
-npx videosays batch resume "<stable-batch-id>"
-npx videosays batch status "<stable-batch-id>"
-npx videosays batch continue "<stable-batch-id>"
-```
-
-## Batch Tasks
-
-When the user provides two or more video links, use `videosays batch`. Do not build a shell loop, `xargs`, parallel subprocess wrapper, or repeated `transcribe` calls.
-
-1. Write one link or share text per line to a text file.
-2. Choose one stable batch ID and keep it for the entire user request.
-3. Run `videosays batch <file> --batch-id <stable-batch-id>`.
-4. If the terminal, tool call, or agent turn is interrupted, run `videosays batch resume <stable-batch-id>`.
-5. If the batch stops with `insufficient_credits`, ask the user to top up. After confirmation, run `videosays batch continue <stable-batch-id>`; do not create a new batch.
-
-The CLI persists the batch mapping locally and the API deduplicates the batch and its items. Never create a new batch ID merely because a command timed out.
-
-## Authentication Check
+## Authentication
 
 Before the first transcription in a session, run:
 
@@ -99,17 +28,23 @@ Before the first transcription in a session, run:
 npx videosays whoami
 ```
 
-If it exits successfully, continue with transcription. If it exits non-zero because no API key is configured, run:
+If authentication is missing, run:
 
 ```bash
 npx videosays login
 ```
 
-Ask the user to complete the browser authorization URL printed by the CLI, then retry `npx videosays whoami`. Do not ask the user for their API key unless they explicitly want to provide one.
+Ask the user to open the printed authorization URL, sign in, and approve the CLI. If the user explicitly provides an API key, run `npx videosays login --api-key "$VIDEOSAYS_API_KEY"`. Never print or reveal the API key.
 
-## Pending Tasks
+## Single Link
 
-Long videos may still be processing when `transcribe` returns. If stdout contains this block:
+Submit one link:
+
+```bash
+VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays transcribe "<video-link-or-share-text>"
+```
+
+Submission returns quickly. It normally prints:
 
 ```text
 VIDEOSAYS_TASK_PENDING
@@ -118,23 +53,74 @@ status=<status>
 next=videosays status <task-id>
 ```
 
-Do not treat it as a final transcript. Extract `task_id`, wait a reasonable interval, then run the `next` command. If the original user requested a format, preserve it on status checks, for example:
+Capture `task_id`. Wait a reasonable interval, then run the printed one-shot status command:
 
 ```bash
-npx videosays status "<task-id>" --format srt
+npx videosays status "<task-id>"
 ```
 
-Repeat until the command prints transcript/subtitle content or exits with an error.
+If the task is still running, `status` immediately prints its current state and the next command. Repeat status checks until the command prints transcript content or a stable error. Preserve the requested format on status checks:
 
-A terminal timeout does not cancel the server task. Never call `transcribe` again for the same pending item. Use the printed `task_id` with `status`, or use `batch resume` for batch work.
+```bash
+npx videosays status "<task-id>" --format timeline
+npx videosays status "<task-id>" --format srt
+npx videosays status "<task-id>" --format vtt
+```
 
-For batches, Videosays resolves duration and reserves credit sequentially. When one item exceeds the remaining credit, later unscanned links are skipped without another metadata-provider call. `batch continue` resumes those items after a top-up.
+Do not submit the link again while its task is pending. The API reuses a matching active task, but agents must still follow the returned Task ID.
+
+## Multiple Links
+
+When the user provides two or more links, use one server batch. Never build a shell loop, use `xargs`, start parallel `transcribe` commands, or submit the links individually.
+
+1. Write one link or share text per line to a temporary text file.
+2. Submit once:
+
+```bash
+VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays batch links.txt
+```
+
+3. Capture the server-generated `batchId` from stdout.
+4. Wait a reasonable interval, then make a one-shot status request:
+
+```bash
+npx videosays batch status "<batch-id>"
+```
+
+5. Repeat status checks until the batch reaches `completed`, `partial`, `failed`, or `cancelled`.
+
+Batch submission and status commands return promptly. Do not invent a Batch ID and do not use `batch resume`.
+
+Videosays resolves duration and checks credit sequentially. If an item exceeds the remaining credit, later unscanned links are skipped without another metadata-provider call. When `stopReason` is `insufficient_credits`, ask the user to top up; after confirmation run:
+
+```bash
+npx videosays batch continue "<batch-id>"
+```
+
+Then continue using `batch status` with the same Batch ID.
+
+## Optional Interactive Waiting
+
+Only use `--wait` when a human explicitly wants the terminal to remain attached:
+
+```bash
+npx videosays transcribe "<video-link>" --wait
+npx videosays batch links.txt --wait
+```
+
+Agents must use the default immediate-return workflow so every tool call produces prompt, structured stdout.
+
+## Other Commands
+
+```bash
+npx videosays balance
+npx videosays history
+npx videosays batch cancel "<batch-id>"
+```
 
 ## Errors
 
-If a command exits non-zero, read stderr. Do not treat stdout as transcript content.
-
-The CLI prints stable error details when available:
+Read stderr when a command exits non-zero. Do not treat error output or a pending receipt as transcript content.
 
 ```text
 Error: <message>
@@ -143,16 +129,10 @@ Next: <recommended-command>
 Recharge: <billing-url>
 ```
 
-If `Code: insufficient_credits` appears, do not retry transcription. Tell the user their balance is insufficient, suggest `npx videosays balance`, and provide the recharge URL if present.
-
-For media or link errors such as `media_resolve_failed`, `media_unavailable`, or `media_inaccessible`, tell the user the link could not be processed and ask for another video link.
-
-## Data Flow
-
-This skill calls `npx videosays`, which sends the submitted video link/share text and API key to `https://api.videosays.com` for transcription. Transcript text or the requested timestamp/subtitle format is returned on stdout.
+For `insufficient_credits`, do not repeatedly resubmit. Report the balance issue and recharge URL. For media or link errors such as `media_resolve_failed`, `media_unavailable`, or `media_inaccessible`, ask for another accessible video link.
 
 ## Links
 
 - Website: https://videosays.com
 - API: https://api.videosays.com
-- CLI package: https://www.npmjs.com/package/videosays
+- CLI: https://www.npmjs.com/package/videosays

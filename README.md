@@ -144,10 +144,10 @@ videosays transcribe <video-link-or-share-text> --format srt
 videosays transcribe <video-link-or-share-text> --format vtt
 videosays status <taskId>
 videosays status <taskId> --format srt
-videosays batch <links.txt> --batch-id <stable-batch-id>
-videosays batch resume <stable-batch-id>
-videosays batch continue <stable-batch-id>
-videosays batch status <stable-batch-id>
+videosays batch <links.txt>
+videosays batch status <batch-id>
+videosays batch continue <batch-id>
+videosays batch cancel <batch-id>
 videosays balance
 videosays history [limit]
 videosays help

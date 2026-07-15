@@ -1,6 +1,6 @@
 {
   "name": "videosays",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Videosays CLI for video transcription, video to text, speech to text, subtitles, and AI agent workflows",
   "type": "module",
   "bin": {

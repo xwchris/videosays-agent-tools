@@ -32,8 +32,8 @@ videosays login
 # Transcribe a video link or share text
 videosays transcribe "https://www.tiktok.com/@creator/video/123456"
 
-# Export subtitles
-videosays transcribe "https://www.bilibili.com/video/BV1234567890" --format srt
+# Retrieve the result after the returned Task ID is ready
+videosays status "<task-id>"
 ```
 
 ## Commands
@@ -50,29 +50,30 @@ videosays transcribe <video-link-or-share-text> --format srt
 videosays transcribe <video-link-or-share-text> --format vtt
 videosays status <taskId>
 videosays status <taskId> --format srt
-videosays batch <links.txt> --batch-id <stable-batch-id>
-videosays batch resume <stable-batch-id>
-videosays batch continue <stable-batch-id>
-videosays batch status <stable-batch-id>
+videosays batch <links.txt>
+videosays batch status <batch-id>
+videosays batch continue <batch-id>
+videosays batch cancel <batch-id>
 videosays balance
 videosays history [limit]
 videosays help
 ```
 
-For multiple links, put one input per line in a text file and use `batch`. The server resolves duration and reserves credit one item at a time. If credit is insufficient, later links are not sent to the metadata provider; top up and run `batch continue`. The CLI stores resumable state under `~/.videosays-data/jobs`; `batch resume` only resumes polling and never resubmits the batch.
+Submission commands return promptly with a server Task ID or Batch ID. Use `status` or `batch status` as short, one-shot checks. Add `--wait` only for an interactive terminal that should remain attached.
+
+For multiple links, put one input per line in a text file and use `batch`. The server resolves duration and reserves credit one item at a time. If credit is insufficient, later links are not sent to the metadata provider; top up and run `batch continue <batch-id>`.
 
 ## Transcription Output
 
-By default, `transcribe` and `status` use `--format text` and print only the transcript text to stdout.
+By default, `transcribe` submits and immediately prints a pending receipt. `status` prints transcript text after completion. Both commands use text output unless another format is requested.
 
 Use `--format` when the user asks for a different result shape:
 
 ```bash
 videosays transcribe "<video-link>" --format text
-videosays transcribe "<video-link>" --format timeline
-videosays transcribe "<video-link>" --format srt
-videosays transcribe "<video-link>" --format vtt
+videosays status "<task-id>" --format timeline
 videosays status "<task-id>" --format srt
+videosays status "<task-id>" --format vtt
 ```
 
 Formats:

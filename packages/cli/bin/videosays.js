@@ -1,16 +1,13 @@
 #!/usr/bin/env node
 
-import { chmodSync, existsSync, mkdirSync, openSync, closeSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir, platform } from 'node:os';
-import { basename, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
-import { createHash, randomUUID } from 'node:crypto';
 
-const VERSION = '1.1.1';
+const VERSION = '1.2.0';
 const API_URL = (process.env.VIDEOSAYS_API_URL || 'https://api.videosays.com').replace(/\/$/, '');
 const CONFIG_FILE = join(homedir(), '.videosays');
-const STATE_DIR = join(homedir(), '.videosays-data');
-const JOBS_DIR = join(STATE_DIR, 'jobs');
 const DEFAULT_TRANSCRIBE_WAIT_SECONDS = 120;
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
 const RECHARGE_URL = 'https://videosays.com/dashboard/billing';
@@ -86,68 +83,6 @@ function progress(message) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function ensureStateDirectories() {
-  mkdirSync(JOBS_DIR, { recursive: true, mode: 0o700 });
-}
-
-function sha256(value) {
-  return createHash('sha256').update(value).digest('hex');
-}
-
-function atomicWriteJson(path, value) {
-  ensureStateDirectories();
-  const temporaryPath = `${path}.${process.pid}.tmp`;
-  writeFileSync(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 });
-  renameSync(temporaryPath, path);
-  try { chmodSync(path, 0o600); } catch { /* not available everywhere */ }
-}
-
-function readJsonFile(path) {
-  if (!existsSync(path)) return null;
-  return JSON.parse(readFileSync(path, 'utf-8'));
-}
-
-function withJobLock(jobPath, callback) {
-  const lockPath = `${jobPath}.lock`;
-  ensureStateDirectories();
-  let descriptor;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      descriptor = openSync(lockPath, 'wx', 0o600);
-      writeFileSync(descriptor, `${process.pid}\n`);
-      break;
-    } catch (lockError) {
-      if (lockError?.code === 'EEXIST' && attempt === 0) {
-        const ownerPid = Number(readFileSync(lockPath, 'utf-8').trim());
-        let ownerAlive = Number.isInteger(ownerPid) && ownerPid > 0;
-        if (ownerAlive) {
-          try { process.kill(ownerPid, 0); } catch { ownerAlive = false; }
-        }
-        if (!ownerAlive) {
-          try { unlinkSync(lockPath); } catch { /* another process may own it now */ }
-          continue;
-        }
-      }
-      if (lockError?.code === 'EEXIST') {
-        error(`This batch is already running: ${basename(jobPath, '.json')}`, { code: 'batch_already_running' });
-      }
-      throw lockError;
-    }
-  }
-  const cleanup = () => {
-    try { if (descriptor !== undefined) closeSync(descriptor); } catch { /* ignore */ }
-    descriptor = undefined;
-    try { unlinkSync(lockPath); } catch { /* ignore */ }
-  };
-  process.once('exit', cleanup);
-  return Promise.resolve()
-    .then(callback)
-    .finally(() => {
-      process.removeListener('exit', cleanup);
-      cleanup();
-    });
 }
 
 function readConfigFile() {
@@ -467,18 +402,19 @@ async function cmdTranscribe(input, args = []) {
   const format = parseResultFormat(args);
   const timeoutSeconds = Number(optionValue(args, '--timeout', String(DEFAULT_TRANSCRIBE_WAIT_SECONDS))) || DEFAULT_TRANSCRIBE_WAIT_SECONDS;
   const intervalSeconds = Number(optionValue(args, '--poll-interval', String(DEFAULT_POLL_INTERVAL_SECONDS))) || DEFAULT_POLL_INTERVAL_SECONDS;
-  const idempotencyKey = optionValue(args, '--idempotency-key', randomUUID());
-
   progress(`Submitting transcription: ${input.substring(0, 120)}`);
 
-  const task = await apiCall('POST', '/api/v1/transcribe', { input, tracking: getClientTracking() }, {
-    headers: { 'Idempotency-Key': idempotencyKey },
-  });
+  const task = await apiCall('POST', '/api/v1/transcribe', { input, tracking: getClientTracking() });
   const taskId = task.taskId || task.id;
   if (!taskId) error('Task creation failed. No taskId returned.');
 
   if (task.status === 'completed') {
     outputTaskResult(task, format);
+    return;
+  }
+
+  if (!hasFlag(args, '--wait')) {
+    outputPendingTask(taskId, task.status, format);
     return;
   }
 
@@ -526,13 +462,6 @@ async function cmdStatus(taskId, args = []) {
   outputPendingTask(task.taskId || task.id || taskId, task.status, format);
 }
 
-function batchJobPath(clientBatchId) {
-  if (!/^[A-Za-z0-9._-]{1,120}$/.test(clientBatchId)) {
-    error('Batch ID must contain only letters, numbers, dot, underscore, or dash.', { code: 'invalid_batch_id' });
-  }
-  return join(JOBS_DIR, `${clientBatchId}.json`);
-}
-
 function isTerminalBatch(batch) {
   return ['completed', 'partial', 'failed', 'cancelled'].includes(batch?.status);
 }
@@ -543,29 +472,19 @@ function outputBatch(batch, outputPath = null) {
   process.stdout.write(rendered);
 }
 
-async function runBatchJob(job, jobPath, rawArgs) {
+function batchWithNext(batch) {
+  if (!batch?.batchId || isTerminalBatch(batch)) return batch;
+  return {
+    ...batch,
+    next: batch.stopReason === 'insufficient_credits'
+      ? `videosays batch continue ${batch.batchId}`
+      : `videosays batch status ${batch.batchId}`,
+  };
+}
+
+async function waitForBatch(batch, rawArgs) {
   const timeoutSeconds = Number(optionValue(rawArgs, '--timeout', String(DEFAULT_TRANSCRIBE_WAIT_SECONDS))) || DEFAULT_TRANSCRIBE_WAIT_SECONDS;
   const outputPath = optionValue(rawArgs, '--output');
-  let batch;
-  if (job.serverBatchId) {
-    batch = await apiCall('GET', `/api/v1/batches/${job.serverBatchId}`);
-  } else {
-    batch = await apiCall('POST', '/api/v1/batches', {
-      clientBatchId: job.clientBatchId,
-      items: job.items,
-      tracking: {
-        ...getClientTracking(),
-        clientName: process.env.VIDEOSAYS_CLIENT_NAME || 'videosays-cli-batch',
-      },
-    }, {
-      headers: { 'Idempotency-Key': `batch:${job.clientBatchId}` },
-    });
-    job.serverBatchId = batch.batchId;
-  }
-  job.status = batch.status;
-  job.updatedAt = new Date().toISOString();
-  atomicWriteJson(jobPath, job);
-
   if (isTerminalBatch(batch)) {
     outputBatch(batch, outputPath);
     return;
@@ -573,69 +492,41 @@ async function runBatchJob(job, jobPath, rawArgs) {
 
   const startedAt = Date.now();
   let pollDelaySeconds = 2;
-  progress(`Batch ID: ${job.clientBatchId}`);
-  progress(`Server batch ID: ${job.serverBatchId}`);
+  progress(`Batch ID: ${batch.batchId}`);
   while (Date.now() - startedAt < timeoutSeconds * 1000) {
     const remainingMs = timeoutSeconds * 1000 - (Date.now() - startedAt);
     await sleep(Math.min(pollDelaySeconds * 1000, Math.max(1, remainingMs)));
     if (Date.now() - startedAt >= timeoutSeconds * 1000) break;
-    batch = await apiCall('GET', `/api/v1/batches/${job.serverBatchId}`);
-    job.status = batch.status;
-    job.updatedAt = new Date().toISOString();
-    atomicWriteJson(jobPath, job);
+    batch = await apiCall('GET', `/api/v1/batches/${batch.batchId}`);
     if (isTerminalBatch(batch)) {
       outputBatch(batch, outputPath);
       return;
     }
-    progress(`Waiting for batch... (${batch.summary?.completed ?? 0}/${batch.summary?.total ?? job.items.length} completed)`);
+    progress(`Waiting for batch... (${batch.summary?.completed ?? 0}/${batch.summary?.total ?? 0} completed)`);
     pollDelaySeconds = Math.min(15, Number(batch.retryAfterSeconds) || Math.ceil(pollDelaySeconds * 1.5));
   }
 
-  outputBatch({
-    status: batch.status,
-    batchId: job.serverBatchId,
-    clientBatchId: job.clientBatchId,
-    summary: batch.summary,
-    next: `videosays batch resume ${job.clientBatchId}`,
-  }, outputPath);
+  outputBatch(batchWithNext(batch), outputPath);
 }
 
 async function cmdBatch(args = [], rawArgs = []) {
   const subcommand = args[0];
-  if (subcommand === 'resume' || subcommand === 'continue' || subcommand === 'status' || subcommand === 'cancel') {
-    const clientBatchId = args[1];
-    if (!clientBatchId) error(`Usage: videosays batch ${subcommand} <batch-id>`);
-    const jobPath = batchJobPath(clientBatchId);
-    const job = readJsonFile(jobPath);
-    if (!job) error(`Batch state not found: ${clientBatchId}`, { code: 'batch_not_found' });
-    if (subcommand === 'status' || subcommand === 'cancel') {
-      if (!job.serverBatchId) error('Batch has not been submitted yet.', { code: 'batch_not_submitted' });
-      const method = subcommand === 'cancel' ? 'POST' : 'GET';
-      const suffix = subcommand === 'cancel' ? '/cancel' : '';
-      outputBatch(await apiCall(method, `/api/v1/batches/${job.serverBatchId}${suffix}`, null, subcommand === 'cancel' ? {
-        headers: { 'Idempotency-Key': `batch-cancel:${job.clientBatchId}` },
-      } : {}), optionValue(rawArgs, '--output'));
-      return;
-    }
+  if (subcommand === 'continue' || subcommand === 'status' || subcommand === 'cancel') {
+    const batchId = args[1];
+    if (!batchId) error(`Usage: videosays batch ${subcommand} <batch-id>`);
     if (subcommand === 'continue') {
-      if (!job.serverBatchId) error('Batch has not been submitted yet.', { code: 'batch_not_submitted' });
-      await withJobLock(jobPath, async () => {
-        const resumed = await apiCall('POST', `/api/v1/batches/${job.serverBatchId}/resume`, null, {
-          headers: { 'Idempotency-Key': `batch-continue:${job.clientBatchId}` },
-        });
-        job.status = resumed.status;
-        job.updatedAt = new Date().toISOString();
-        atomicWriteJson(jobPath, job);
-        await runBatchJob(job, jobPath, rawArgs);
-      });
+      const continued = await apiCall('POST', `/api/v1/batches/${batchId}/continue`);
+      outputBatch(batchWithNext(continued), optionValue(rawArgs, '--output'));
       return;
     }
-    await withJobLock(jobPath, () => runBatchJob(job, jobPath, rawArgs));
+    const method = subcommand === 'cancel' ? 'POST' : 'GET';
+    const suffix = subcommand === 'cancel' ? '/cancel' : '';
+    outputBatch(batchWithNext(await apiCall(method, `/api/v1/batches/${batchId}${suffix}`)), optionValue(rawArgs, '--output'));
     return;
   }
 
   const inputFile = subcommand;
-  if (!inputFile) error('Usage: videosays batch <links.txt> [--batch-id <id>]');
+  if (!inputFile) error('Usage: videosays batch <links.txt>');
   const absoluteInputFile = resolve(inputFile);
   if (!existsSync(absoluteInputFile)) error(`Input file not found: ${absoluteInputFile}`, { code: 'input_file_not_found' });
   const rawInput = readFileSync(absoluteInputFile, 'utf-8');
@@ -643,31 +534,15 @@ async function cmdBatch(args = [], rawArgs = []) {
   if (!lines.length) error('Input file contains no links.', { code: 'empty_batch' });
   if (lines.length > 100) error('A batch can contain at most 100 items.', { code: 'batch_too_large' });
   const uniqueInputs = [...new Set(lines)];
-  const contentFingerprint = sha256(uniqueInputs.join('\n'));
-  const explicitBatchId = optionValue(rawArgs, '--batch-id');
-  const clientBatchId = explicitBatchId || `batch-${randomUUID()}`;
-  const jobPath = batchJobPath(clientBatchId);
-  const existing = readJsonFile(jobPath);
-  if (existing && existing.contentFingerprint !== contentFingerprint) {
-    error(`Batch ID ${clientBatchId} already belongs to different input.`, { code: 'batch_id_conflict' });
-  }
-  const job = existing || {
-    version: 1,
-    clientBatchId,
-    inputFile: absoluteInputFile,
-    contentFingerprint,
-    serverBatchId: null,
-    status: 'local',
-    items: uniqueInputs.map((input, index) => ({
-      itemId: `${String(index + 1).padStart(3, '0')}-${sha256(input).slice(0, 12)}`,
-      input,
-    })),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  atomicWriteJson(jobPath, job);
-  progress(`Saved resumable batch state: ${jobPath}`);
-  await withJobLock(jobPath, () => runBatchJob(job, jobPath, rawArgs));
+  const batch = await apiCall('POST', '/api/v1/batches', {
+    items: uniqueInputs.map((input, index) => ({ itemId: String(index + 1), input })),
+    tracking: {
+      ...getClientTracking(),
+      clientName: process.env.VIDEOSAYS_CLIENT_NAME || 'videosays-cli-batch',
+    },
+  });
+  if (hasFlag(rawArgs, '--wait')) await waitForBatch(batch, rawArgs);
+  else outputBatch(batchWithNext(batch), optionValue(rawArgs, '--output'));
 }
 
 async function cmdBalance() {
@@ -719,8 +594,7 @@ Usage:
   videosays transcribe <video-link-or-share-text> --format srt
   videosays status <taskId>
   videosays status <taskId> --format vtt
-  videosays batch <links.txt> [--batch-id <id>]
-  videosays batch resume <batch-id>
+  videosays batch <links.txt>
   videosays batch continue <batch-id>
   videosays batch status <batch-id>
   videosays batch cancel <batch-id>
@@ -742,7 +616,7 @@ Examples:
   videosays transcribe "https://www.tiktok.com/@creator/video/123456"
   videosays transcribe "https://v.douyin.com/xxxxx/" --format text
   videosays transcribe "https://v.douyin.com/xxxxx/" --format srt
-  videosays batch links.txt --batch-id my-batch
+  videosays batch links.txt
   videosays status 123e4567-e89b-12d3-a456-426614174000
   videosays balance
 
@@ -762,7 +636,7 @@ if (rawArgs.includes('--help') || rawArgs.includes('-h')) {
   process.exit(0);
 }
 
-const args = stripFlags(rawArgs, ['--api-key', '--timeout', '--poll-interval', '--format', '--idempotency-key', '--batch-id', '--output']);
+const args = stripFlags(rawArgs, ['--api-key', '--timeout', '--poll-interval', '--format', '--output']);
 const command = args[0];
 
 switch (command) {

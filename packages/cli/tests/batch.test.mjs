@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
@@ -22,14 +22,21 @@ before(async () => {
     response.setHeader('Content-Type', 'application/json');
     if (request.method === 'POST' && request.url === '/api/v1/batches') {
       postCount += 1;
-      assert.equal(request.headers['idempotency-key'], 'batch:test-batch');
-      response.statusCode = 202;
-      response.end(JSON.stringify({
-        batchId: 'server-batch',
-        status: 'processing',
-        summary: { total: 2, completed: 0 },
-        retryAfterSeconds: 1,
-      }));
+      assert.equal(request.headers['idempotency-key'], undefined);
+      let raw = '';
+      request.on('data', (chunk) => { raw += chunk; });
+      request.on('end', () => {
+        const body = JSON.parse(raw);
+        assert.equal(body.clientBatchId, undefined);
+        assert.deepEqual(body.items.map((item) => item.itemId), ['1', '2']);
+        response.statusCode = 202;
+        response.end(JSON.stringify({
+          batchId: 'server-batch',
+          status: 'pending',
+          summary: { total: 2, waiting: 2, completed: 0 },
+          retryAfterSeconds: 1,
+        }));
+      });
       return;
     }
     if (request.method === 'GET' && request.url === '/api/v1/batches/server-batch') {
@@ -42,9 +49,8 @@ before(async () => {
       }));
       return;
     }
-    if (request.method === 'POST' && request.url === '/api/v1/batches/server-batch/resume') {
+    if (request.method === 'POST' && request.url === '/api/v1/batches/server-batch/continue') {
       continueCount += 1;
-      assert.equal(request.headers['idempotency-key'], 'batch-continue:test-batch');
       response.end(JSON.stringify({
         batchId: 'server-batch',
         status: 'processing',
@@ -68,13 +74,13 @@ after(async () => {
 function run(args) {
   return new Promise((resolvePromise) => {
     const child = spawn(process.execPath, [cli, ...args], {
-    env: {
-      ...process.env,
-      HOME: home,
-      VIDEOSAYS_API_URL: apiUrl,
-      VIDEOSAYS_API_KEY: 'test-key',
-      NO_COLOR: '1',
-    },
+      env: {
+        ...process.env,
+        HOME: home,
+        VIDEOSAYS_API_URL: apiUrl,
+        VIDEOSAYS_API_KEY: 'test-key',
+        NO_COLOR: '1',
+      },
     });
     let stdout = '';
     let stderr = '';
@@ -84,25 +90,34 @@ function run(args) {
   });
 }
 
-test('batch interruption persists state and resume never resubmits', async () => {
-  const first = await run(['batch', links, '--batch-id', 'test-batch', '--timeout', '0.01']);
+test('batch submission returns the server batch id immediately', async () => {
+  const first = await run(['batch', links]);
   assert.equal(first.status, 0, first.stderr);
-  assert.match(first.stdout, /"next": "videosays batch resume test-batch"/);
-  const job = JSON.parse(readFileSync(join(home, '.videosays-data/jobs/test-batch.json'), 'utf-8'));
-  assert.equal(job.serverBatchId, 'server-batch');
+  assert.match(first.stdout, /"batchId": "server-batch"/);
+  assert.match(first.stdout, /"next": "videosays batch status server-batch"/);
   assert.equal(postCount, 1);
+  assert.equal(getCount, 0);
+});
 
-  const resumed = await run(['batch', 'resume', 'test-batch', '--timeout', '1']);
-  assert.equal(resumed.status, 0, resumed.stderr);
-  assert.match(resumed.stdout, /"status": "completed"/);
-  assert.equal(postCount, 1);
+test('batch status is a single short request', async () => {
+  const status = await run(['batch', 'status', 'server-batch']);
+  assert.equal(status.status, 0, status.stderr);
+  assert.match(status.stdout, /"status": "completed"/);
   assert.equal(getCount, 1);
 });
 
-test('batch continue reuses the saved server batch after a top-up', async () => {
-  const continued = await run(['batch', 'continue', 'test-batch', '--timeout', '1']);
+test('batch continue resumes once and returns without polling', async () => {
+  const continued = await run(['batch', 'continue', 'server-batch']);
   assert.equal(continued.status, 0, continued.stderr);
-  assert.match(continued.stdout, /"status": "completed"/);
+  assert.match(continued.stdout, /"next": "videosays batch status server-batch"/);
   assert.equal(continueCount, 1);
-  assert.equal(postCount, 1);
+  assert.equal(getCount, 1);
+});
+
+test('batch wait remains an explicit opt-in', async () => {
+  const waited = await run(['batch', links, '--wait', '--timeout', '3']);
+  assert.equal(waited.status, 0, waited.stderr);
+  assert.match(waited.stdout, /"status": "completed"/);
+  assert.equal(postCount, 2);
+  assert.equal(getCount, 2);
 });
