@@ -1,6 +1,6 @@
 ---
 name: videosays
-version: 1.1.0
+version: 1.1.1
 description: Videosays video transcription, video to text, speech to text, subtitle extractor, caption transcription, YouTube transcript, TikTok transcript, Instagram Reels transcript, X or Twitter video transcript, Douyin transcript, Xiaohongshu transcript, WeChat Channels transcript, and AI agent video transcription. Use when the user asks to transcribe a video link, extract spoken text, generate subtitles, check credit balance, or view transcription history.
 license: MIT-0
 requires:
@@ -76,6 +76,7 @@ VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx v
 # Resume or inspect an interrupted batch without creating new tasks
 npx videosays batch resume "<stable-batch-id>"
 npx videosays batch status "<stable-batch-id>"
+npx videosays batch continue "<stable-batch-id>"
 ```
 
 ## Batch Tasks
@@ -86,6 +87,7 @@ When the user provides two or more video links, use `videosays batch`. Do not bu
 2. Choose one stable batch ID and keep it for the entire user request.
 3. Run `videosays batch <file> --batch-id <stable-batch-id>`.
 4. If the terminal, tool call, or agent turn is interrupted, run `videosays batch resume <stable-batch-id>`.
+5. If the batch stops with `insufficient_credits`, ask the user to top up. After confirmation, run `videosays batch continue <stable-batch-id>`; do not create a new batch.
 
 The CLI persists the batch mapping locally and the API deduplicates the batch and its items. Never create a new batch ID merely because a command timed out.
 
@@ -125,6 +127,8 @@ npx videosays status "<task-id>" --format srt
 Repeat until the command prints transcript/subtitle content or exits with an error.
 
 A terminal timeout does not cancel the server task. Never call `transcribe` again for the same pending item. Use the printed `task_id` with `status`, or use `batch resume` for batch work.
+
+For batches, Videosays resolves duration and reserves credit sequentially. When one item exceeds the remaining credit, later unscanned links are skipped without another metadata-provider call. `batch continue` resumes those items after a top-up.
 
 ## Errors
 

@@ -52,13 +52,14 @@ videosays status <taskId>
 videosays status <taskId> --format srt
 videosays batch <links.txt> --batch-id <stable-batch-id>
 videosays batch resume <stable-batch-id>
+videosays batch continue <stable-batch-id>
 videosays batch status <stable-batch-id>
 videosays balance
 videosays history [limit]
 videosays help
 ```
 
-For multiple links, put one input per line in a text file and use `batch`. The CLI stores resumable state under `~/.videosays-data/jobs`; rerunning `batch resume` reuses the same server batch and tasks instead of charging for duplicate submissions.
+For multiple links, put one input per line in a text file and use `batch`. The server resolves duration and reserves credit one item at a time. If credit is insufficient, later links are not sent to the metadata provider; top up and run `batch continue`. The CLI stores resumable state under `~/.videosays-data/jobs`; `batch resume` only resumes polling and never resubmits the batch.
 
 ## Transcription Output
 

@@ -146,6 +146,7 @@ videosays status <taskId>
 videosays status <taskId> --format srt
 videosays batch <links.txt> --batch-id <stable-batch-id>
 videosays batch resume <stable-batch-id>
+videosays batch continue <stable-batch-id>
 videosays batch status <stable-batch-id>
 videosays balance
 videosays history [limit]

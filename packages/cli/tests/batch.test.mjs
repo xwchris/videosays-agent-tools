@@ -14,6 +14,7 @@ let server;
 let apiUrl;
 let postCount = 0;
 let getCount = 0;
+let continueCount = 0;
 
 before(async () => {
   writeFileSync(links, 'https://v.douyin.com/one/\nhttps://v.douyin.com/two/\n', 'utf-8');
@@ -38,6 +39,17 @@ before(async () => {
         status: 'completed',
         summary: { total: 2, completed: 2 },
         items: [],
+      }));
+      return;
+    }
+    if (request.method === 'POST' && request.url === '/api/v1/batches/server-batch/resume') {
+      continueCount += 1;
+      assert.equal(request.headers['idempotency-key'], 'batch-continue:test-batch');
+      response.end(JSON.stringify({
+        batchId: 'server-batch',
+        status: 'processing',
+        resumedItems: 1,
+        summary: { total: 2, completed: 1, waiting: 1 },
       }));
       return;
     }
@@ -85,4 +97,12 @@ test('batch interruption persists state and resume never resubmits', async () =>
   assert.match(resumed.stdout, /"status": "completed"/);
   assert.equal(postCount, 1);
   assert.equal(getCount, 1);
+});
+
+test('batch continue reuses the saved server batch after a top-up', async () => {
+  const continued = await run(['batch', 'continue', 'test-batch', '--timeout', '1']);
+  assert.equal(continued.status, 0, continued.stderr);
+  assert.match(continued.stdout, /"status": "completed"/);
+  assert.equal(continueCount, 1);
+  assert.equal(postCount, 1);
 });

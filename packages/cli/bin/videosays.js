@@ -6,7 +6,7 @@ import { basename, join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 const API_URL = (process.env.VIDEOSAYS_API_URL || 'https://api.videosays.com').replace(/\/$/, '');
 const CONFIG_FILE = join(homedir(), '.videosays');
 const STATE_DIR = join(homedir(), '.videosays-data');
@@ -602,7 +602,7 @@ async function runBatchJob(job, jobPath, rawArgs) {
 
 async function cmdBatch(args = [], rawArgs = []) {
   const subcommand = args[0];
-  if (subcommand === 'resume' || subcommand === 'status' || subcommand === 'cancel') {
+  if (subcommand === 'resume' || subcommand === 'continue' || subcommand === 'status' || subcommand === 'cancel') {
     const clientBatchId = args[1];
     if (!clientBatchId) error(`Usage: videosays batch ${subcommand} <batch-id>`);
     const jobPath = batchJobPath(clientBatchId);
@@ -615,6 +615,19 @@ async function cmdBatch(args = [], rawArgs = []) {
       outputBatch(await apiCall(method, `/api/v1/batches/${job.serverBatchId}${suffix}`, null, subcommand === 'cancel' ? {
         headers: { 'Idempotency-Key': `batch-cancel:${job.clientBatchId}` },
       } : {}), optionValue(rawArgs, '--output'));
+      return;
+    }
+    if (subcommand === 'continue') {
+      if (!job.serverBatchId) error('Batch has not been submitted yet.', { code: 'batch_not_submitted' });
+      await withJobLock(jobPath, async () => {
+        const resumed = await apiCall('POST', `/api/v1/batches/${job.serverBatchId}/resume`, null, {
+          headers: { 'Idempotency-Key': `batch-continue:${job.clientBatchId}` },
+        });
+        job.status = resumed.status;
+        job.updatedAt = new Date().toISOString();
+        atomicWriteJson(jobPath, job);
+        await runBatchJob(job, jobPath, rawArgs);
+      });
       return;
     }
     await withJobLock(jobPath, () => runBatchJob(job, jobPath, rawArgs));
@@ -708,6 +721,7 @@ Usage:
   videosays status <taskId> --format vtt
   videosays batch <links.txt> [--batch-id <id>]
   videosays batch resume <batch-id>
+  videosays batch continue <batch-id>
   videosays batch status <batch-id>
   videosays batch cancel <batch-id>
   videosays balance
