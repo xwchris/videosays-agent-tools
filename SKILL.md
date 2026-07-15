@@ -1,7 +1,7 @@
 ---
 name: videosays
-version: 1.0.3
-description: Videosays video transcription, video to text, speech to text, subtitle extractor, caption transcription, YouTube transcript, TikTok transcript, Instagram Reels transcript, X or Twitter video transcript, Douyin transcript, Xiaohongshu transcript, and AI agent video transcription. Use when the user asks to transcribe a video link, extract spoken text, generate subtitles, check credit balance, or view transcription history.
+version: 1.1.0
+description: Videosays video transcription, video to text, speech to text, subtitle extractor, caption transcription, YouTube transcript, TikTok transcript, Instagram Reels transcript, X or Twitter video transcript, Douyin transcript, Xiaohongshu transcript, WeChat Channels transcript, and AI agent video transcription. Use when the user asks to transcribe a video link, extract spoken text, generate subtitles, check credit balance, or view transcription history.
 license: MIT-0
 requires:
   binaries:
@@ -12,7 +12,7 @@ sendsDataTo:
 
 # Videosays - Video to Text Transcription
 
-Use `npx videosays` to turn video links or share text into transcript text. Search terms this skill covers include video to text, video transcription, speech to text, subtitle extraction, caption transcription, Douyin transcription, TikTok transcription, Instagram Reels transcription, X video transcription, Twitter video transcription, YouTube transcription, Xiaohongshu transcription, and short-video transcript.
+Use `npx videosays` to turn video links or share text into transcript text. Search terms this skill covers include video to text, video transcription, speech to text, subtitle extraction, caption transcription, Douyin transcription, TikTok transcription, Instagram Reels transcription, X video transcription, Twitter video transcription, YouTube transcription, Xiaohongshu transcription, WeChat Channels transcription, 微信视频号转文字, and short-video transcript.
 
 This skill sends the user's API key and submitted video link/share text to Videosays.
 
@@ -69,7 +69,25 @@ npx videosays balance
 
 # View recent transcription history
 npx videosays history
+
+# Reliably process multiple links from a text file
+VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx videosays batch links.txt --batch-id "<stable-batch-id>"
+
+# Resume or inspect an interrupted batch without creating new tasks
+npx videosays batch resume "<stable-batch-id>"
+npx videosays batch status "<stable-batch-id>"
 ```
+
+## Batch Tasks
+
+When the user provides two or more video links, use `videosays batch`. Do not build a shell loop, `xargs`, parallel subprocess wrapper, or repeated `transcribe` calls.
+
+1. Write one link or share text per line to a text file.
+2. Choose one stable batch ID and keep it for the entire user request.
+3. Run `videosays batch <file> --batch-id <stable-batch-id>`.
+4. If the terminal, tool call, or agent turn is interrupted, run `videosays batch resume <stable-batch-id>`.
+
+The CLI persists the batch mapping locally and the API deduplicates the batch and its items. Never create a new batch ID merely because a command timed out.
 
 ## Authentication Check
 
@@ -105,6 +123,8 @@ npx videosays status "<task-id>" --format srt
 ```
 
 Repeat until the command prints transcript/subtitle content or exits with an error.
+
+A terminal timeout does not cancel the server task. Never call `transcribe` again for the same pending item. Use the printed `task_id` with `status`, or use `batch resume` for batch work.
 
 ## Errors
 

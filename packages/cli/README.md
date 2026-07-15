@@ -50,10 +50,15 @@ videosays transcribe <video-link-or-share-text> --format srt
 videosays transcribe <video-link-or-share-text> --format vtt
 videosays status <taskId>
 videosays status <taskId> --format srt
+videosays batch <links.txt> --batch-id <stable-batch-id>
+videosays batch resume <stable-batch-id>
+videosays batch status <stable-batch-id>
 videosays balance
 videosays history [limit]
 videosays help
 ```
+
+For multiple links, put one input per line in a text file and use `batch`. The CLI stores resumable state under `~/.videosays-data/jobs`; rerunning `batch resume` reuses the same server batch and tasks instead of charging for duplicate submissions.
 
 ## Transcription Output
 

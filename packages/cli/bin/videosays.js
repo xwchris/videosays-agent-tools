@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 
-import { chmodSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, openSync, closeSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir, platform } from 'node:os';
-import { join } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
 
-const VERSION = '1.0.3';
+const VERSION = '1.1.0';
 const API_URL = (process.env.VIDEOSAYS_API_URL || 'https://api.videosays.com').replace(/\/$/, '');
 const CONFIG_FILE = join(homedir(), '.videosays');
+const STATE_DIR = join(homedir(), '.videosays-data');
+const JOBS_DIR = join(STATE_DIR, 'jobs');
 const DEFAULT_TRANSCRIBE_WAIT_SECONDS = 120;
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
 const RECHARGE_URL = 'https://videosays.com/dashboard/billing';
@@ -85,6 +88,68 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function ensureStateDirectories() {
+  mkdirSync(JOBS_DIR, { recursive: true, mode: 0o700 });
+}
+
+function sha256(value) {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function atomicWriteJson(path, value) {
+  ensureStateDirectories();
+  const temporaryPath = `${path}.${process.pid}.tmp`;
+  writeFileSync(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 });
+  renameSync(temporaryPath, path);
+  try { chmodSync(path, 0o600); } catch { /* not available everywhere */ }
+}
+
+function readJsonFile(path) {
+  if (!existsSync(path)) return null;
+  return JSON.parse(readFileSync(path, 'utf-8'));
+}
+
+function withJobLock(jobPath, callback) {
+  const lockPath = `${jobPath}.lock`;
+  ensureStateDirectories();
+  let descriptor;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      descriptor = openSync(lockPath, 'wx', 0o600);
+      writeFileSync(descriptor, `${process.pid}\n`);
+      break;
+    } catch (lockError) {
+      if (lockError?.code === 'EEXIST' && attempt === 0) {
+        const ownerPid = Number(readFileSync(lockPath, 'utf-8').trim());
+        let ownerAlive = Number.isInteger(ownerPid) && ownerPid > 0;
+        if (ownerAlive) {
+          try { process.kill(ownerPid, 0); } catch { ownerAlive = false; }
+        }
+        if (!ownerAlive) {
+          try { unlinkSync(lockPath); } catch { /* another process may own it now */ }
+          continue;
+        }
+      }
+      if (lockError?.code === 'EEXIST') {
+        error(`This batch is already running: ${basename(jobPath, '.json')}`, { code: 'batch_already_running' });
+      }
+      throw lockError;
+    }
+  }
+  const cleanup = () => {
+    try { if (descriptor !== undefined) closeSync(descriptor); } catch { /* ignore */ }
+    descriptor = undefined;
+    try { unlinkSync(lockPath); } catch { /* ignore */ }
+  };
+  process.once('exit', cleanup);
+  return Promise.resolve()
+    .then(callback)
+    .finally(() => {
+      process.removeListener('exit', cleanup);
+      cleanup();
+    });
+}
+
 function readConfigFile() {
   if (!existsSync(CONFIG_FILE)) return {};
 
@@ -147,31 +212,53 @@ function getApiKey() {
 }
 
 async function requestJson(method, path, body, options = {}) {
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (options.apiKey) headers['X-API-Key'] = options.apiKey;
+  const retryableRequest = method === 'GET' || Boolean(headers['Idempotency-Key']);
+  const maxAttempts = retryableRequest ? 3 : 1;
+  let lastNetworkError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let response;
+    try {
+      response = await fetch(`${API_URL}${path}`, {
+        method,
+        headers,
+        body: body == null ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (networkError) {
+      lastNetworkError = networkError;
+      if (attempt < maxAttempts) {
+        await sleep(500 * 2 ** (attempt - 1));
+        continue;
+      }
+      error('Request failed. Check your network connection.', { code: 'network_error' });
+    }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body == null ? undefined : JSON.stringify(body),
-  }).catch(() => {
-    error('Request failed. Check your network connection.');
-  });
-
-  const data = await response.json().catch(() => {
-    error('Service returned a non-JSON response.');
-  });
-
-  if (!response.ok && !options.allowStatuses?.includes(response.status)) {
-    error(data.error || `Request failed (${response.status})`, { status: response.status });
+    const data = await response.json().catch(() => null);
+    if (!data) error('Service returned a non-JSON response.', { status: response.status });
+    if ((response.status === 429 || response.status >= 500) && attempt < maxAttempts) {
+      const retryAfter = Number(response.headers.get('Retry-After') || data.retryAfter || data.error?.retryAfterSeconds || 0);
+      await sleep(Math.max(500, Math.min(30_000, retryAfter * 1000 || 500 * 2 ** (attempt - 1))));
+      continue;
+    }
+    if (!response.ok && !options.allowStatuses?.includes(response.status)) {
+      const apiError = typeof data.error === 'object' ? data.error : { message: data.error };
+      error(apiError?.message || `Request failed (${response.status})`, {
+        code: data.code || apiError?.code,
+        status: response.status,
+        next: data.next || apiError?.next,
+        rechargeUrl: data.rechargeUrl || apiError?.rechargeUrl,
+      });
+    }
+    return { data, status: response.status, headers: response.headers };
   }
-
-  return { data, status: response.status };
+  error(lastNetworkError?.message || 'Request failed.', { code: 'network_error' });
 }
 
 async function apiCall(method, path, body, options = {}) {
   const config = options.apiKey ? { apiKey: options.apiKey } : getApiKey();
-  const { data } = await requestJson(method, path, body, { apiKey: config.apiKey });
+  const { data } = await requestJson(method, path, body, { ...options, apiKey: config.apiKey });
   if (data.error) error(data.error);
   return data;
 }
@@ -380,10 +467,13 @@ async function cmdTranscribe(input, args = []) {
   const format = parseResultFormat(args);
   const timeoutSeconds = Number(optionValue(args, '--timeout', String(DEFAULT_TRANSCRIBE_WAIT_SECONDS))) || DEFAULT_TRANSCRIBE_WAIT_SECONDS;
   const intervalSeconds = Number(optionValue(args, '--poll-interval', String(DEFAULT_POLL_INTERVAL_SECONDS))) || DEFAULT_POLL_INTERVAL_SECONDS;
+  const idempotencyKey = optionValue(args, '--idempotency-key', randomUUID());
 
   progress(`Submitting transcription: ${input.substring(0, 120)}`);
 
-  const task = await apiCall('POST', '/api/v1/transcribe', { input, tracking: getClientTracking() });
+  const task = await apiCall('POST', '/api/v1/transcribe', { input, tracking: getClientTracking() }, {
+    headers: { 'Idempotency-Key': idempotencyKey },
+  });
   const taskId = task.taskId || task.id;
   if (!taskId) error('Task creation failed. No taskId returned.');
 
@@ -436,6 +526,137 @@ async function cmdStatus(taskId, args = []) {
   outputPendingTask(task.taskId || task.id || taskId, task.status, format);
 }
 
+function batchJobPath(clientBatchId) {
+  if (!/^[A-Za-z0-9._-]{1,120}$/.test(clientBatchId)) {
+    error('Batch ID must contain only letters, numbers, dot, underscore, or dash.', { code: 'invalid_batch_id' });
+  }
+  return join(JOBS_DIR, `${clientBatchId}.json`);
+}
+
+function isTerminalBatch(batch) {
+  return ['completed', 'partial', 'failed', 'cancelled'].includes(batch?.status);
+}
+
+function outputBatch(batch, outputPath = null) {
+  const rendered = `${JSON.stringify(batch, null, 2)}\n`;
+  if (outputPath) writeFileSync(resolve(outputPath), rendered, 'utf-8');
+  process.stdout.write(rendered);
+}
+
+async function runBatchJob(job, jobPath, rawArgs) {
+  const timeoutSeconds = Number(optionValue(rawArgs, '--timeout', String(DEFAULT_TRANSCRIBE_WAIT_SECONDS))) || DEFAULT_TRANSCRIBE_WAIT_SECONDS;
+  const outputPath = optionValue(rawArgs, '--output');
+  let batch;
+  if (job.serverBatchId) {
+    batch = await apiCall('GET', `/api/v1/batches/${job.serverBatchId}`);
+  } else {
+    batch = await apiCall('POST', '/api/v1/batches', {
+      clientBatchId: job.clientBatchId,
+      items: job.items,
+      tracking: {
+        ...getClientTracking(),
+        clientName: process.env.VIDEOSAYS_CLIENT_NAME || 'videosays-cli-batch',
+      },
+    }, {
+      headers: { 'Idempotency-Key': `batch:${job.clientBatchId}` },
+    });
+    job.serverBatchId = batch.batchId;
+  }
+  job.status = batch.status;
+  job.updatedAt = new Date().toISOString();
+  atomicWriteJson(jobPath, job);
+
+  if (isTerminalBatch(batch)) {
+    outputBatch(batch, outputPath);
+    return;
+  }
+
+  const startedAt = Date.now();
+  let pollDelaySeconds = 2;
+  progress(`Batch ID: ${job.clientBatchId}`);
+  progress(`Server batch ID: ${job.serverBatchId}`);
+  while (Date.now() - startedAt < timeoutSeconds * 1000) {
+    const remainingMs = timeoutSeconds * 1000 - (Date.now() - startedAt);
+    await sleep(Math.min(pollDelaySeconds * 1000, Math.max(1, remainingMs)));
+    if (Date.now() - startedAt >= timeoutSeconds * 1000) break;
+    batch = await apiCall('GET', `/api/v1/batches/${job.serverBatchId}`);
+    job.status = batch.status;
+    job.updatedAt = new Date().toISOString();
+    atomicWriteJson(jobPath, job);
+    if (isTerminalBatch(batch)) {
+      outputBatch(batch, outputPath);
+      return;
+    }
+    progress(`Waiting for batch... (${batch.summary?.completed ?? 0}/${batch.summary?.total ?? job.items.length} completed)`);
+    pollDelaySeconds = Math.min(15, Number(batch.retryAfterSeconds) || Math.ceil(pollDelaySeconds * 1.5));
+  }
+
+  outputBatch({
+    status: batch.status,
+    batchId: job.serverBatchId,
+    clientBatchId: job.clientBatchId,
+    summary: batch.summary,
+    next: `videosays batch resume ${job.clientBatchId}`,
+  }, outputPath);
+}
+
+async function cmdBatch(args = [], rawArgs = []) {
+  const subcommand = args[0];
+  if (subcommand === 'resume' || subcommand === 'status' || subcommand === 'cancel') {
+    const clientBatchId = args[1];
+    if (!clientBatchId) error(`Usage: videosays batch ${subcommand} <batch-id>`);
+    const jobPath = batchJobPath(clientBatchId);
+    const job = readJsonFile(jobPath);
+    if (!job) error(`Batch state not found: ${clientBatchId}`, { code: 'batch_not_found' });
+    if (subcommand === 'status' || subcommand === 'cancel') {
+      if (!job.serverBatchId) error('Batch has not been submitted yet.', { code: 'batch_not_submitted' });
+      const method = subcommand === 'cancel' ? 'POST' : 'GET';
+      const suffix = subcommand === 'cancel' ? '/cancel' : '';
+      outputBatch(await apiCall(method, `/api/v1/batches/${job.serverBatchId}${suffix}`, null, subcommand === 'cancel' ? {
+        headers: { 'Idempotency-Key': `batch-cancel:${job.clientBatchId}` },
+      } : {}), optionValue(rawArgs, '--output'));
+      return;
+    }
+    await withJobLock(jobPath, () => runBatchJob(job, jobPath, rawArgs));
+    return;
+  }
+
+  const inputFile = subcommand;
+  if (!inputFile) error('Usage: videosays batch <links.txt> [--batch-id <id>]');
+  const absoluteInputFile = resolve(inputFile);
+  if (!existsSync(absoluteInputFile)) error(`Input file not found: ${absoluteInputFile}`, { code: 'input_file_not_found' });
+  const rawInput = readFileSync(absoluteInputFile, 'utf-8');
+  const lines = rawInput.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) error('Input file contains no links.', { code: 'empty_batch' });
+  if (lines.length > 100) error('A batch can contain at most 100 items.', { code: 'batch_too_large' });
+  const uniqueInputs = [...new Set(lines)];
+  const contentFingerprint = sha256(uniqueInputs.join('\n'));
+  const explicitBatchId = optionValue(rawArgs, '--batch-id');
+  const clientBatchId = explicitBatchId || `batch-${randomUUID()}`;
+  const jobPath = batchJobPath(clientBatchId);
+  const existing = readJsonFile(jobPath);
+  if (existing && existing.contentFingerprint !== contentFingerprint) {
+    error(`Batch ID ${clientBatchId} already belongs to different input.`, { code: 'batch_id_conflict' });
+  }
+  const job = existing || {
+    version: 1,
+    clientBatchId,
+    inputFile: absoluteInputFile,
+    contentFingerprint,
+    serverBatchId: null,
+    status: 'local',
+    items: uniqueInputs.map((input, index) => ({
+      itemId: `${String(index + 1).padStart(3, '0')}-${sha256(input).slice(0, 12)}`,
+      input,
+    })),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  atomicWriteJson(jobPath, job);
+  progress(`Saved resumable batch state: ${jobPath}`);
+  await withJobLock(jobPath, () => runBatchJob(job, jobPath, rawArgs));
+}
+
 async function cmdBalance() {
   const response = await apiCall('GET', '/api/v1/credits');
 
@@ -485,6 +706,10 @@ Usage:
   videosays transcribe <video-link-or-share-text> --format srt
   videosays status <taskId>
   videosays status <taskId> --format vtt
+  videosays batch <links.txt> [--batch-id <id>]
+  videosays batch resume <batch-id>
+  videosays batch status <batch-id>
+  videosays batch cancel <batch-id>
   videosays balance
   videosays history [limit]
   videosays --version
@@ -503,6 +728,7 @@ Examples:
   videosays transcribe "https://www.tiktok.com/@creator/video/123456"
   videosays transcribe "https://v.douyin.com/xxxxx/" --format text
   videosays transcribe "https://v.douyin.com/xxxxx/" --format srt
+  videosays batch links.txt --batch-id my-batch
   videosays status 123e4567-e89b-12d3-a456-426614174000
   videosays balance
 
@@ -522,7 +748,7 @@ if (rawArgs.includes('--help') || rawArgs.includes('-h')) {
   process.exit(0);
 }
 
-const args = stripFlags(rawArgs, ['--api-key', '--timeout', '--poll-interval', '--format']);
+const args = stripFlags(rawArgs, ['--api-key', '--timeout', '--poll-interval', '--format', '--idempotency-key', '--batch-id', '--output']);
 const command = args[0];
 
 switch (command) {
@@ -545,6 +771,9 @@ switch (command) {
     break;
   case 'status':
     await cmdStatus(args[1], rawArgs);
+    break;
+  case 'batch':
+    await cmdBatch(args.slice(1), rawArgs);
     break;
   case 'balance':
   case 'credits':

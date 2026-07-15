@@ -121,7 +121,7 @@ rm -rf /tmp/videosays-agensi-skill /tmp/videosays-agensi-upload
 mkdir -p /tmp/videosays-agensi-skill /tmp/videosays-agensi-upload
 cp skills/videosays/SKILL.md /tmp/videosays-agensi-skill/SKILL.md
 cd /tmp/videosays-agensi-skill
-zip -X -r /tmp/videosays-agensi-upload/videosays-skill-v1.0.3.zip SKILL.md
+zip -X -r /tmp/videosays-agensi-upload/videosays-skill-v1.1.0.zip SKILL.md
 unzip -l /tmp/videosays-agensi-upload/videosays-skill-v1.0.3.zip
 ```
 
