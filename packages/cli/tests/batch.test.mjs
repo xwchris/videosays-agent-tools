@@ -17,7 +17,7 @@ let getCount = 0;
 let continueCount = 0;
 
 before(async () => {
-  writeFileSync(links, 'https://v.douyin.com/one/\nhttps://v.douyin.com/two/\n', 'utf-8');
+  writeFileSync(links, 'https://v.douyin.com/one/\nhttps://v.douyin.com/two/\nhttps://v.douyin.com/one/\n', 'utf-8');
   server = http.createServer((request, response) => {
     response.setHeader('Content-Type', 'application/json');
     if (request.method === 'POST' && request.url === '/api/v1/batches') {
@@ -28,12 +28,17 @@ before(async () => {
       request.on('end', () => {
         const body = JSON.parse(raw);
         assert.equal(body.clientBatchId, undefined);
-        assert.deepEqual(body.items.map((item) => item.itemId), ['1', '2']);
+        assert.deepEqual(body.items.map((item) => item.itemId), ['1', '2', '3']);
+        assert.deepEqual(body.items.map((item) => item.input), [
+          'https://v.douyin.com/one/',
+          'https://v.douyin.com/two/',
+          'https://v.douyin.com/one/',
+        ]);
         response.statusCode = 202;
         response.end(JSON.stringify({
           batchId: 'server-batch',
           status: 'pending',
-          summary: { total: 2, waiting: 2, completed: 0 },
+          summary: { total: 3, waiting: 3, completed: 0 },
           retryAfterSeconds: 1,
         }));
       });
@@ -44,7 +49,7 @@ before(async () => {
       response.end(JSON.stringify({
         batchId: 'server-batch',
         status: 'completed',
-        summary: { total: 2, completed: 2 },
+        summary: { total: 3, completed: 3 },
         items: [],
       }));
       return;
@@ -55,7 +60,7 @@ before(async () => {
         batchId: 'server-batch',
         status: 'processing',
         resumedItems: 1,
-        summary: { total: 2, completed: 1, waiting: 1 },
+        summary: { total: 3, completed: 1, waiting: 2 },
       }));
       return;
     }

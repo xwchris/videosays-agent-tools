@@ -13,6 +13,7 @@ let server;
 let apiUrl;
 let postCount = 0;
 let getCount = 0;
+let failNextPost = false;
 
 before(async () => {
   server = http.createServer((request, response) => {
@@ -20,6 +21,12 @@ before(async () => {
     if (request.method === 'POST' && request.url === '/api/v1/transcribe') {
       postCount += 1;
       assert.equal(request.headers['idempotency-key'], undefined);
+      if (failNextPost) {
+        failNextPost = false;
+        response.statusCode = 503;
+        response.end(JSON.stringify({ error: 'temporary creation failure', code: 'temporary_failure' }));
+        return;
+      }
       response.statusCode = 202;
       response.end(JSON.stringify({ taskId: `task-${postCount}`, status: 'pending' }));
       return;
@@ -63,8 +70,18 @@ test('transcribe returns a task receipt without polling by default', async () =>
 });
 
 test('transcribe wait remains available for interactive use', async () => {
-  const result = await run(['transcribe', 'https://v.douyin.com/two/', '--wait', '--poll-interval', '0.01']);
+  const result = await run(['transcribe', 'https://v.douyin.com/one/', '--wait', '--poll-interval', '0.01']);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), 'transcript ready');
+  assert.equal(postCount, 2);
   assert.equal(getCount, 1);
+});
+
+test('a failed creation request is not retried automatically', async () => {
+  const previousPostCount = postCount;
+  failNextPost = true;
+  const result = await run(['transcribe', 'https://v.douyin.com/network-error/']);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Code: temporary_failure/);
+  assert.equal(postCount, previousPostCount + 1);
 });

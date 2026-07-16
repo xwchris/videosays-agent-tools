@@ -1,14 +1,6 @@
 ---
 name: videosays
 description: Videosays video transcription, video to text, speech to text, subtitle extraction, caption transcription, YouTube transcript, TikTok transcript, Instagram Reels transcript, X or Twitter video transcript, Douyin transcript, Xiaohongshu transcript, WeChat Channels transcript, and AI agent video transcription. Use when the user asks to transcribe one or more video links, extract spoken text, generate subtitles, check credit balance, or view transcription history.
-license: MIT-0
-metadata:
-  version: 1.2.0
-  requires:
-    binaries:
-      - npx
-  sendsDataTo:
-    - https://api.videosays.com
 ---
 
 # Videosays Video Transcription
@@ -67,13 +59,15 @@ npx videosays status "<task-id>" --format srt
 npx videosays status "<task-id>" --format vtt
 ```
 
-Do not submit the link again while its task is pending. The API reuses a matching active task, but agents must still follow the returned Task ID.
+Every accepted `transcribe` submission creates a new Task ID, including repeated submissions of the same input. Treat `transcribe` only as creation: capture its returned Task ID and use `status` for every later check. Never resubmit a link as a status check.
+
+If submission ends with a network error or timeout before printing a Task ID, do not automatically resubmit. Check `npx videosays history` for a recent matching task first; explain that another submission creates another task if the outcome cannot be recovered.
 
 ## Multiple Links
 
 When the user provides two or more links, use one server batch. Never build a shell loop, use `xargs`, start parallel `transcribe` commands, or submit the links individually.
 
-1. Write one link or share text per line to a temporary text file.
+1. Write one link or share text per line to a temporary text file. Keep duplicate lines when the user requested duplicate work; each line is an independent batch item and Task.
 2. Submit once:
 
 ```bash
@@ -89,7 +83,9 @@ npx videosays batch status "<batch-id>"
 
 5. Repeat status checks until the batch reaches `completed`, `partial`, `failed`, or `cancelled`.
 
-Batch submission and status commands return promptly. Do not invent a Batch ID and do not use `batch resume`.
+Every `batch <file>` submission creates a new server Batch ID, even when the file contents are unchanged. Batch submission and status commands return promptly. Do not rerun the input file as a status check, do not invent a Batch ID, and do not use `batch resume`.
+
+If batch submission ends before printing a Batch ID, do not automatically submit the file again: the server may already have accepted it, and another submission creates another batch. Report the ambiguous outcome and get confirmation before creating a replacement batch.
 
 Videosays resolves duration and checks credit sequentially. If an item exceeds the remaining credit, later unscanned links are skipped without another metadata-provider call. When `stopReason` is `insufficient_credits`, ask the user to top up; after confirmation run:
 

@@ -32,6 +32,8 @@ The CLI stores your API key in `~/.videosays`. You can also provide it through `
 
 首次使用会打开浏览器授权，CLI 会把 API key 保存到 `~/.videosays`。也可以通过 `VIDEOSAYS_API_KEY` 环境变量提供。
 
+Each accepted `transcribe` or `batch` invocation creates a new server resource, even for the same input. Capture the returned Task ID or Batch ID and use `status` commands for later checks. Batch files preserve duplicate lines as independent items.
+
 ## Agent Skill
 
 Use Videosays from an AI agent by giving it this prompt:

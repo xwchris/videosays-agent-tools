@@ -5,7 +5,7 @@ import { homedir, platform } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 const API_URL = (process.env.VIDEOSAYS_API_URL || 'https://api.videosays.com').replace(/\/$/, '');
 const CONFIG_FILE = join(homedir(), '.videosays');
 const DEFAULT_TRANSCRIBE_WAIT_SECONDS = 120;
@@ -149,7 +149,7 @@ function getApiKey() {
 async function requestJson(method, path, body, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (options.apiKey) headers['X-API-Key'] = options.apiKey;
-  const retryableRequest = method === 'GET' || Boolean(headers['Idempotency-Key']);
+  const retryableRequest = method === 'GET';
   const maxAttempts = retryableRequest ? 3 : 1;
   let lastNetworkError;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -533,9 +533,8 @@ async function cmdBatch(args = [], rawArgs = []) {
   const lines = rawInput.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   if (!lines.length) error('Input file contains no links.', { code: 'empty_batch' });
   if (lines.length > 100) error('A batch can contain at most 100 items.', { code: 'batch_too_large' });
-  const uniqueInputs = [...new Set(lines)];
   const batch = await apiCall('POST', '/api/v1/batches', {
-    items: uniqueInputs.map((input, index) => ({ itemId: String(index + 1), input })),
+    items: lines.map((input, index) => ({ itemId: String(index + 1), input })),
     tracking: {
       ...getClientTracking(),
       clientName: process.env.VIDEOSAYS_CLIENT_NAME || 'videosays-cli-batch',
@@ -605,6 +604,10 @@ Usage:
 
 Shortcut:
   videosays "<video-link-or-share-text>"
+
+Creation semantics:
+  Every transcribe or batch submission creates a new server resource.
+  Save the returned ID and use status commands for later checks.
 
 Configuration:
   API key file: ~/.videosays
