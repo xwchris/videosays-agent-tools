@@ -5,7 +5,7 @@ import { homedir, platform } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 
-const VERSION = '1.2.1';
+const VERSION = '1.2.2';
 const API_URL = (process.env.VIDEOSAYS_API_URL || 'https://api.videosays.com').replace(/\/$/, '');
 const CONFIG_FILE = join(homedir(), '.videosays');
 const DEFAULT_TRANSCRIBE_WAIT_SECONDS = 120;
@@ -534,7 +534,7 @@ async function cmdBatch(args = [], rawArgs = []) {
   if (!lines.length) error('Input file contains no links.', { code: 'empty_batch' });
   if (lines.length > 100) error('A batch can contain at most 100 items.', { code: 'batch_too_large' });
   const batch = await apiCall('POST', '/api/v1/batches', {
-    items: lines.map((input, index) => ({ itemId: String(index + 1), input })),
+    items: lines,
     tracking: {
       ...getClientTracking(),
       clientName: process.env.VIDEOSAYS_CLIENT_NAME || 'videosays-cli-batch',

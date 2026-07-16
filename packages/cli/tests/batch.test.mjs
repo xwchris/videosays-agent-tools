@@ -28,8 +28,7 @@ before(async () => {
       request.on('end', () => {
         const body = JSON.parse(raw);
         assert.equal(body.clientBatchId, undefined);
-        assert.deepEqual(body.items.map((item) => item.itemId), ['1', '2', '3']);
-        assert.deepEqual(body.items.map((item) => item.input), [
+        assert.deepEqual(body.items, [
           'https://v.douyin.com/one/',
           'https://v.douyin.com/two/',
           'https://v.douyin.com/one/',

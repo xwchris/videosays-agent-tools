@@ -61,7 +61,7 @@ videosays help
 
 Submission commands return promptly with a server Task ID or Batch ID. Every accepted submission creates a new resource, even when the link or batch file is unchanged. Capture the returned ID and use `status` or `batch status` as short, one-shot checks; never rerun a submission command to check progress. Add `--wait` only for an interactive terminal that should remain attached.
 
-For multiple links, put one input per line in a text file and use `batch`. Duplicate lines are preserved as separate items and each item receives its own Task. The server resolves duration and reserves credit one item at a time. If credit is insufficient, later links are not sent to the metadata provider; top up and run `batch continue <batch-id>`.
+For multiple links, put one input per line in a text file and use `batch`. Duplicate lines are preserved as separate Tasks. The server processes Tasks through its bounded queue and reserves credit atomically. If credit is insufficient, unstarted Tasks are skipped; top up and run `batch continue <batch-id>`.
 
 ## Transcription Output
 
