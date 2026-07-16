@@ -87,7 +87,7 @@ Every `batch <file>` submission creates a new server Batch ID, even when the fil
 
 If batch submission ends before printing a Batch ID, do not automatically submit the file again: the server may already have accepted it, and another submission creates another batch. Report the ambiguous outcome and get confirmation before creating a replacement batch.
 
-Videosays resolves duration and checks credit sequentially. If an item exceeds the remaining credit, later unscanned links are skipped without another metadata-provider call. When `stopReason` is `insufficient_credits`, ask the user to top up; after confirmation run:
+Videosays creates every batch item as an ordinary Task and runs those Tasks through the normal queue. Each Task must reserve credit atomically before provider submission, so the balance cannot be overspent. If `stopReason` is `insufficient_credits`, unstarted Tasks are skipped; ask the user to top up, then after confirmation run:
 
 ```bash
 npx videosays batch continue "<batch-id>"
