@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
 import { chmodSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { homedir, platform } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 
-const VERSION = '1.2.2';
+const require = createRequire(import.meta.url);
+const { version: VERSION } = require('../package.json');
 const API_URL = (process.env.VIDEOSAYS_API_URL || 'https://api.videosays.com').replace(/\/$/, '');
 const CONFIG_FILE = join(homedir(), '.videosays');
 const DEFAULT_TRANSCRIBE_WAIT_SECONDS = 120;
