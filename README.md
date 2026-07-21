@@ -157,9 +157,9 @@ videosays help
 
 ## Links
 
-- Website: https://videosays.com
+- Website: https://videosays.com/?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill
 - Public skill: https://videosays.com/SKILL.md
-- API: https://api.videosays.com
+- API docs: https://videosays.com/docs?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill&utm_content=api_docs
 - CLI package: `videosays`
 
 ## License

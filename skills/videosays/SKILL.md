@@ -129,6 +129,6 @@ For `insufficient_credits`, do not repeatedly resubmit. Report the balance issue
 
 ## Links
 
-- Website: https://videosays.com
-- API: https://api.videosays.com
+- Website: https://videosays.com/?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill
+- API docs: https://videosays.com/docs?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill&utm_content=api_docs
 - CLI: https://www.npmjs.com/package/videosays
