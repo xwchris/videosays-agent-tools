@@ -468,6 +468,19 @@ function isTerminalBatch(batch) {
   return ['completed', 'partial', 'failed', 'cancelled'].includes(batch?.status);
 }
 
+function batchNeedsContinuation(batch) {
+  return batch?.continuation?.required === true || batch?.stopReason === 'insufficient_credits';
+}
+
+function batchStatusPath(batchId) {
+  return `/api/v1/batches/${encodeURIComponent(batchId)}?view=status`;
+}
+
+function batchRechargeUrl(batchId) {
+  const returnPath = `/dashboard?batch=${encodeURIComponent(batchId)}&continue=1`;
+  return `${RECHARGE_URL}?returnTo=${encodeURIComponent(returnPath)}`;
+}
+
 function outputBatch(batch, outputPath = null) {
   const rendered = `${JSON.stringify(batch, null, 2)}\n`;
   if (outputPath) writeFileSync(resolve(outputPath), rendered, 'utf-8');
@@ -475,18 +488,38 @@ function outputBatch(batch, outputPath = null) {
 }
 
 function batchWithNext(batch) {
-  if (!batch?.batchId || isTerminalBatch(batch)) return batch;
+  if (!batch?.batchId) return batch;
+  if (batchNeedsContinuation(batch)) {
+    return {
+      ...batch,
+      status: 'paused',
+      rechargeUrl: batchRechargeUrl(batch.batchId),
+      next: `videosays batch continue ${batch.batchId}`,
+    };
+  }
+  if (isTerminalBatch(batch)) return batch;
   return {
     ...batch,
-    next: batch.stopReason === 'insufficient_credits'
-      ? `videosays batch continue ${batch.batchId}`
-      : `videosays batch status ${batch.batchId}`,
+    next: `videosays batch status ${batch.batchId}`,
   };
+}
+
+async function loadBatchStatus(batchId) {
+  return apiCall('GET', batchStatusPath(batchId));
+}
+
+async function loadCompletedBatch(batch) {
+  if (!batch?.batchId || batchNeedsContinuation(batch) || !isTerminalBatch(batch)) return batch;
+  return apiCall('GET', `/api/v1/batches/${encodeURIComponent(batch.batchId)}`);
 }
 
 async function waitForBatch(batch, rawArgs) {
   const timeoutSeconds = Number(optionValue(rawArgs, '--timeout', String(DEFAULT_TRANSCRIBE_WAIT_SECONDS))) || DEFAULT_TRANSCRIBE_WAIT_SECONDS;
   const outputPath = optionValue(rawArgs, '--output');
+  if (batchNeedsContinuation(batch)) {
+    outputBatch(batchWithNext(batch), outputPath);
+    return;
+  }
   if (isTerminalBatch(batch)) {
     outputBatch(batch, outputPath);
     return;
@@ -499,9 +532,13 @@ async function waitForBatch(batch, rawArgs) {
     const remainingMs = timeoutSeconds * 1000 - (Date.now() - startedAt);
     await sleep(Math.min(pollDelaySeconds * 1000, Math.max(1, remainingMs)));
     if (Date.now() - startedAt >= timeoutSeconds * 1000) break;
-    batch = await apiCall('GET', `/api/v1/batches/${batch.batchId}`);
+    batch = await loadBatchStatus(batch.batchId);
+    if (batchNeedsContinuation(batch)) {
+      outputBatch(batchWithNext(batch), outputPath);
+      return;
+    }
     if (isTerminalBatch(batch)) {
-      outputBatch(batch, outputPath);
+      outputBatch(await loadCompletedBatch(batch), outputPath);
       return;
     }
     progress(`Waiting for batch... (${batch.summary?.completed ?? 0}/${batch.summary?.total ?? 0} completed)`);
@@ -517,13 +554,20 @@ async function cmdBatch(args = [], rawArgs = []) {
     const batchId = args[1];
     if (!batchId) error(`Usage: videosays batch ${subcommand} <batch-id>`);
     if (subcommand === 'continue') {
-      const continued = await apiCall('POST', `/api/v1/batches/${batchId}/continue`);
+      const continued = await apiCall('POST', `/api/v1/batches/${encodeURIComponent(batchId)}/continue?view=status`);
       outputBatch(batchWithNext(continued), optionValue(rawArgs, '--output'));
       return;
     }
-    const method = subcommand === 'cancel' ? 'POST' : 'GET';
-    const suffix = subcommand === 'cancel' ? '/cancel' : '';
-    outputBatch(batchWithNext(await apiCall(method, `/api/v1/batches/${batchId}${suffix}`)), optionValue(rawArgs, '--output'));
+    if (subcommand === 'cancel') {
+      const cancelled = await apiCall('POST', `/api/v1/batches/${encodeURIComponent(batchId)}/cancel?view=status`);
+      outputBatch(cancelled, optionValue(rawArgs, '--output'));
+      return;
+    }
+    const status = await loadBatchStatus(batchId);
+    outputBatch(
+      batchWithNext(await loadCompletedBatch(status)),
+      optionValue(rawArgs, '--output'),
+    );
     return;
   }
 

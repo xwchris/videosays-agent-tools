@@ -155,6 +155,8 @@ videosays history [limit]
 videosays help
 ```
 
+Batch progress checks use lightweight status responses. The CLI downloads complete Task results once at the end, and preserves completed work when a credit-limited batch is continued under the same Batch ID.
+
 ## Links
 
 - Website: https://videosays.com/?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill

@@ -81,13 +81,15 @@ VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx v
 npx videosays batch status "<batch-id>"
 ```
 
-5. Repeat status checks until the batch reaches `completed`, `partial`, `failed`, or `cancelled`.
+5. Repeat status checks until the batch reaches `completed`, `partial`, `failed`, or `cancelled`, or reports a resumable `paused` state.
+
+While a batch is running, `batch status` uses a lightweight status response. When the batch finishes, the CLI retrieves the complete results once. Do not replace this with per-Task polling.
 
 Every `batch <file>` submission creates a new server Batch ID, even when the file contents are unchanged. Batch submission and status commands return promptly. Do not rerun the input file as a status check, do not invent a Batch ID, and do not use `batch resume`.
 
 If batch submission ends before printing a Batch ID, do not automatically submit the file again: the server may already have accepted it, and another submission creates another batch. Report the ambiguous outcome and get confirmation before creating a replacement batch.
 
-Videosays creates every batch item as an ordinary Task and runs those Tasks through the normal queue. Each Task must reserve credit atomically before provider submission, so the balance cannot be overspent. If `stopReason` is `insufficient_credits`, unstarted Tasks are skipped; ask the user to top up, then after confirmation run:
+Videosays creates every batch item as an ordinary Task and runs those Tasks through the normal queue. Each Task must reserve credit atomically before provider submission, so the balance cannot be overspent. If the batch reports `paused` or `stopReason` is `insufficient_credits`, completed Tasks are preserved and unstarted Tasks wait to be resumed. Ask the user to top up, then after confirmation run:
 
 ```bash
 npx videosays batch continue "<batch-id>"

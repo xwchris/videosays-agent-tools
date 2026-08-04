@@ -13,7 +13,8 @@ const links = join(home, 'links.txt');
 let server;
 let apiUrl;
 let postCount = 0;
-let getCount = 0;
+let statusGetCount = 0;
+let fullGetCount = 0;
 let continueCount = 0;
 
 before(async () => {
@@ -43,8 +44,8 @@ before(async () => {
       });
       return;
     }
-    if (request.method === 'GET' && request.url === '/api/v1/batches/server-batch') {
-      getCount += 1;
+    if (request.method === 'GET' && request.url === '/api/v1/batches/server-batch?view=status') {
+      statusGetCount += 1;
       response.end(JSON.stringify({
         batchId: 'server-batch',
         status: 'completed',
@@ -53,7 +54,29 @@ before(async () => {
       }));
       return;
     }
-    if (request.method === 'POST' && request.url === '/api/v1/batches/server-batch/continue') {
+    if (request.method === 'GET' && request.url === '/api/v1/batches/server-batch') {
+      fullGetCount += 1;
+      response.end(JSON.stringify({
+        batchId: 'server-batch',
+        status: 'completed',
+        summary: { total: 3, completed: 3 },
+        items: [{ taskId: 'task-1', task: { result: { text: 'done' } } }],
+      }));
+      return;
+    }
+    if (request.method === 'GET' && request.url === '/api/v1/batches/credit-batch?view=status') {
+      statusGetCount += 1;
+      response.end(JSON.stringify({
+        batchId: 'credit-batch',
+        status: 'partial',
+        stopReason: 'insufficient_credits',
+        continuation: { required: true, reason: 'insufficient_credits', resumableItems: 2 },
+        summary: { total: 3, completed: 1, failed: 1, skipped: 1 },
+        items: [],
+      }));
+      return;
+    }
+    if (request.method === 'POST' && request.url === '/api/v1/batches/server-batch/continue?view=status') {
       continueCount += 1;
       response.end(JSON.stringify({
         batchId: 'server-batch',
@@ -100,14 +123,27 @@ test('batch submission returns the server batch id immediately', async () => {
   assert.match(first.stdout, /"batchId": "server-batch"/);
   assert.match(first.stdout, /"next": "videosays batch status server-batch"/);
   assert.equal(postCount, 1);
-  assert.equal(getCount, 0);
+  assert.equal(statusGetCount, 0);
+  assert.equal(fullGetCount, 0);
 });
 
-test('batch status is a single short request', async () => {
+test('batch status polls lightly and loads full results once after completion', async () => {
   const status = await run(['batch', 'status', 'server-batch']);
   assert.equal(status.status, 0, status.stderr);
   assert.match(status.stdout, /"status": "completed"/);
-  assert.equal(getCount, 1);
+  assert.match(status.stdout, /"text": "done"/);
+  assert.equal(statusGetCount, 1);
+  assert.equal(fullGetCount, 1);
+});
+
+test('batch status exposes a resumable pause without loading full results', async () => {
+  const status = await run(['batch', 'status', 'credit-batch']);
+  assert.equal(status.status, 0, status.stderr);
+  assert.match(status.stdout, /"status": "paused"/);
+  assert.match(status.stdout, /"next": "videosays batch continue credit-batch"/);
+  assert.match(status.stdout, /"rechargeUrl":/);
+  assert.equal(statusGetCount, 2);
+  assert.equal(fullGetCount, 1);
 });
 
 test('batch continue resumes once and returns without polling', async () => {
@@ -115,13 +151,16 @@ test('batch continue resumes once and returns without polling', async () => {
   assert.equal(continued.status, 0, continued.stderr);
   assert.match(continued.stdout, /"next": "videosays batch status server-batch"/);
   assert.equal(continueCount, 1);
-  assert.equal(getCount, 1);
+  assert.equal(statusGetCount, 2);
+  assert.equal(fullGetCount, 1);
 });
 
 test('batch wait remains an explicit opt-in', async () => {
   const waited = await run(['batch', links, '--wait', '--timeout', '3']);
   assert.equal(waited.status, 0, waited.stderr);
   assert.match(waited.stdout, /"status": "completed"/);
+  assert.match(waited.stdout, /"text": "done"/);
   assert.equal(postCount, 2);
-  assert.equal(getCount, 2);
+  assert.equal(statusGetCount, 3);
+  assert.equal(fullGetCount, 2);
 });
