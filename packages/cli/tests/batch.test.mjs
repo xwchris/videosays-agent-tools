@@ -16,6 +16,7 @@ let postCount = 0;
 let statusGetCount = 0;
 let fullGetCount = 0;
 let continueCount = 0;
+const duplicatePolicies = [];
 
 before(async () => {
   writeFileSync(links, 'https://v.douyin.com/one/\nhttps://v.douyin.com/two/\nhttps://v.douyin.com/one/\n', 'utf-8');
@@ -23,7 +24,7 @@ before(async () => {
     response.setHeader('Content-Type', 'application/json');
     if (request.method === 'POST' && request.url === '/api/v1/batches') {
       postCount += 1;
-      assert.equal(request.headers['idempotency-key'], undefined);
+      assert.match(request.headers['idempotency-key'], /^[0-9a-f-]{36}$/i);
       let raw = '';
       request.on('data', (chunk) => { raw += chunk; });
       request.on('end', () => {
@@ -34,6 +35,7 @@ before(async () => {
           'https://v.douyin.com/two/',
           'https://v.douyin.com/one/',
         ]);
+        duplicatePolicies.push(body.options.duplicatePolicy);
         response.statusCode = 202;
         response.end(JSON.stringify({
           batchId: 'server-batch',
@@ -125,6 +127,7 @@ test('batch submission returns the server batch id immediately', async () => {
   assert.equal(postCount, 1);
   assert.equal(statusGetCount, 0);
   assert.equal(fullGetCount, 0);
+  assert.equal(duplicatePolicies[0], 'reuse');
 });
 
 test('batch status polls lightly and loads full results once after completion', async () => {
@@ -156,11 +159,18 @@ test('batch continue resumes once and returns without polling', async () => {
 });
 
 test('batch wait remains an explicit opt-in', async () => {
+  const previousPostCount = postCount;
   const waited = await run(['batch', links, '--wait', '--timeout', '3']);
   assert.equal(waited.status, 0, waited.stderr);
   assert.match(waited.stdout, /"status": "completed"/);
   assert.match(waited.stdout, /"text": "done"/);
-  assert.equal(postCount, 2);
+  assert.equal(postCount, previousPostCount + 1);
   assert.equal(statusGetCount, 3);
   assert.equal(fullGetCount, 2);
+});
+
+test('batch --force-new requests fresh billed transcriptions', async () => {
+  const result = await run(['batch', links, '--force-new']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(duplicatePolicies.at(-1), 'force_new');
 });

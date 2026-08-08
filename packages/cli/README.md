@@ -48,9 +48,11 @@ videosays transcribe <video-link-or-share-text> --format text
 videosays transcribe <video-link-or-share-text> --format timeline
 videosays transcribe <video-link-or-share-text> --format srt
 videosays transcribe <video-link-or-share-text> --format vtt
+videosays transcribe <video-link-or-share-text> --force-new
 videosays status <taskId>
 videosays status <taskId> --format srt
 videosays batch <links.txt>
+videosays batch <links.txt> --force-new
 videosays batch status <batch-id>
 videosays batch continue <batch-id>
 videosays batch cancel <batch-id>
@@ -59,11 +61,11 @@ videosays history [limit]
 videosays help
 ```
 
-Submission commands return promptly with a server Task ID or Batch ID. Every accepted submission creates a new resource, even when the link or batch file is unchanged. Capture the returned ID and use `status` or `batch status` as short, one-shot checks; never rerun a submission command to check progress. Add `--wait` only for an interactive terminal that should remain attached.
+Submission commands return promptly with a server Task ID or Batch ID. Repeated videos reuse the same account's active task or completed result by default and do not consume more minutes. Requests carry an idempotency key, so a temporary network retry resolves to the same resource. Use `--force-new` only for a fresh, normally billed transcription. Capture the returned ID and use `status` or `batch status` as short, one-shot checks; never rerun a submission command to check progress. Add `--wait` only for an interactive terminal that should remain attached.
 
 Batch status checks use a lightweight response while work is running and retrieve complete Task results once after the batch finishes. If the batch pauses for insufficient credits, completed Tasks remain intact; top up and run `batch continue <batch-id>` to resume the remaining Tasks under the same Batch ID.
 
-For multiple links, put one input per line in a text file and use `batch`. Duplicate lines are preserved as separate Tasks. The server processes Tasks through its bounded queue and reserves credit atomically. If credit is insufficient, unstarted Tasks are skipped; top up and run `batch continue <batch-id>`.
+For multiple links, put one input per line in a text file and use `batch`. Duplicate lines keep their batch positions, while their effective status/result follows the canonical task unless `--force-new` is used. The server processes Tasks through its bounded queue and reserves credit atomically. If credit is insufficient, unstarted Tasks are skipped; top up and run `batch continue <batch-id>`.
 
 ## Transcription Output
 

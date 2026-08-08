@@ -59,15 +59,15 @@ npx videosays status "<task-id>" --format srt
 npx videosays status "<task-id>" --format vtt
 ```
 
-Every accepted `transcribe` submission creates a new Task ID, including repeated submissions of the same input. Treat `transcribe` only as creation: capture its returned Task ID and use `status` for every later check. Never resubmit a link as a status check.
+By default, a repeated video reuses the same account's active Task or a completed result from the last 30 days and does not consume more transcription minutes. Use `--force-new` only when the user explicitly requests a fresh transcription; it is billed normally. Capture the returned Task ID and use `status` for every later check. Never resubmit a link as a status check.
 
-If submission ends with a network error or timeout before printing a Task ID, do not automatically resubmit. Check `npx videosays history` for a recent matching task first; explain that another submission creates another task if the outcome cannot be recovered.
+The CLI safely retries temporary network and service errors with the same idempotency key. If it still ends before printing a Task ID, check `npx videosays history` for a recent matching task first. Do not switch to `--force-new` automatically.
 
 ## Multiple Links
 
 When the user provides two or more links, use one server batch. Never build a shell loop, use `xargs`, start parallel `transcribe` commands, or submit the links individually.
 
-1. Write one link or share text per line to a temporary text file. Keep duplicate lines when the user requested duplicate work; each line is an independent batch item and Task.
+1. Write one link or share text per line to a temporary text file. Duplicate lines keep their batch positions, but by default their effective status and result follow the canonical Task. Use `--force-new` only when the user explicitly requests separate fresh transcriptions.
 2. Submit once:
 
 ```bash
@@ -85,9 +85,9 @@ npx videosays batch status "<batch-id>"
 
 While a batch is running, `batch status` uses a lightweight status response. When the batch finishes, the CLI retrieves the complete results once. Do not replace this with per-Task polling.
 
-Every `batch <file>` submission creates a new server Batch ID, even when the file contents are unchanged. Batch submission and status commands return promptly. Do not rerun the input file as a status check, do not invent a Batch ID, and do not use `batch resume`.
+Every new `batch <file>` invocation creates a server Batch ID, but repeated videos for the same account reuse the existing Task or result by default. Batch submission and status commands return promptly. Do not rerun the input file as a status check, do not invent a Batch ID, and do not use `batch resume`.
 
-If batch submission ends before printing a Batch ID, do not automatically submit the file again: the server may already have accepted it, and another submission creates another batch. Report the ambiguous outcome and get confirmation before creating a replacement batch.
+Batch submission carries an idempotency key, and the CLI safely retries temporary errors with that same key. If it still ends before printing a Batch ID, report the ambiguous outcome and check recent Tasks. Do not switch to `--force-new` automatically.
 
 Videosays creates every batch item as an ordinary Task and runs those Tasks through the normal queue. Each Task must reserve credit atomically before provider submission, so the balance cannot be overspent. If the batch reports `paused` or `stopReason` is `insufficient_credits`, completed Tasks are preserved and unstarted Tasks wait to be resumed. Ask the user to top up, then after confirmation run:
 
@@ -104,6 +104,13 @@ Only use `--wait` when a human explicitly wants the terminal to remain attached:
 ```bash
 npx videosays transcribe "<video-link>" --wait
 npx videosays batch links.txt --wait
+```
+
+Use a fresh, normally billed transcription only when the user explicitly asks to ignore existing work:
+
+```bash
+npx videosays transcribe "<video-link>" --force-new
+npx videosays batch links.txt --force-new
 ```
 
 Agents must use the default immediate-return workflow so every tool call produces prompt, structured stdout.
