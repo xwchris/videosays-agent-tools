@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { homedir, platform } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 
 const require = createRequire(import.meta.url);
 const { version: VERSION } = require('../package.json');
@@ -151,7 +152,7 @@ function getApiKey() {
 async function requestJson(method, path, body, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (options.apiKey) headers['X-API-Key'] = options.apiKey;
-  const retryableRequest = method === 'GET';
+  const retryableRequest = method === 'GET' || Boolean(headers['Idempotency-Key']);
   const maxAttempts = retryableRequest ? 3 : 1;
   let lastNetworkError;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -389,11 +390,11 @@ function outputTaskResult(task, format) {
   console.log(formatTaskResult(task, format));
 }
 
-function outputPendingTask(taskId, status, format) {
+function outputPendingTask(taskId, status, format, reuse = null) {
   console.log(`VIDEOSAYS_TASK_PENDING
 task_id=${taskId}
 status=${status || 'processing'}
-next=videosays status ${taskId}${format && format !== 'text' ? ` --format ${format}` : ''}`);
+${reuse?.reused ? `reused=true\ncanonical_task_id=${reuse.canonicalTaskId || taskId}\n` : ''}next=videosays status ${taskId}${format && format !== 'text' ? ` --format ${format}` : ''}`);
 }
 
 async function cmdTranscribe(input, args = []) {
@@ -404,19 +405,27 @@ async function cmdTranscribe(input, args = []) {
   const format = parseResultFormat(args);
   const timeoutSeconds = Number(optionValue(args, '--timeout', String(DEFAULT_TRANSCRIBE_WAIT_SECONDS))) || DEFAULT_TRANSCRIBE_WAIT_SECONDS;
   const intervalSeconds = Number(optionValue(args, '--poll-interval', String(DEFAULT_POLL_INTERVAL_SECONDS))) || DEFAULT_POLL_INTERVAL_SECONDS;
+  const duplicatePolicy = hasFlag(args, '--force-new') ? 'force_new' : 'reuse';
   progress(`Submitting transcription: ${input.substring(0, 120)}`);
 
-  const task = await apiCall('POST', '/api/v1/transcribe', { input, tracking: getClientTracking() });
+  const task = await apiCall('POST', '/api/v1/transcribe', {
+    input,
+    tracking: getClientTracking(),
+    options: { duplicatePolicy },
+  }, {
+    headers: { 'Idempotency-Key': randomUUID() },
+  });
   const taskId = task.taskId || task.id;
   if (!taskId) error('Task creation failed. No taskId returned.');
 
   if (task.status === 'completed') {
+    if (task.reuse?.reused) progress(`Reused existing transcript: ${task.reuse.canonicalTaskId || taskId}`);
     outputTaskResult(task, format);
     return;
   }
 
   if (!hasFlag(args, '--wait')) {
-    outputPendingTask(taskId, task.status, format);
+    outputPendingTask(taskId, task.status, format, task.reuse);
     return;
   }
 
@@ -443,7 +452,7 @@ async function cmdTranscribe(input, args = []) {
     progress(`Waiting... (${elapsed}s, status: ${poll.status})`);
   }
 
-  outputPendingTask(taskId, lastStatus, format);
+  outputPendingTask(taskId, lastStatus, format, task.reuse);
 }
 
 async function cmdStatus(taskId, args = []) {
@@ -585,6 +594,11 @@ async function cmdBatch(args = [], rawArgs = []) {
       ...getClientTracking(),
       clientName: process.env.VIDEOSAYS_CLIENT_NAME || 'videosays-cli-batch',
     },
+    options: {
+      duplicatePolicy: hasFlag(rawArgs, '--force-new') ? 'force_new' : 'reuse',
+    },
+  }, {
+    headers: { 'Idempotency-Key': randomUUID() },
   });
   if (hasFlag(rawArgs, '--wait')) await waitForBatch(batch, rawArgs);
   else outputBatch(batchWithNext(batch), optionValue(rawArgs, '--output'));
@@ -637,9 +651,11 @@ Usage:
   videosays transcribe <video-link-or-share-text> --format text
   videosays transcribe <video-link-or-share-text> --format timeline
   videosays transcribe <video-link-or-share-text> --format srt
+  videosays transcribe <video-link-or-share-text> --force-new
   videosays status <taskId>
   videosays status <taskId> --format vtt
   videosays batch <links.txt>
+  videosays batch <links.txt> --force-new
   videosays batch continue <batch-id>
   videosays batch status <batch-id>
   videosays batch cancel <batch-id>
@@ -651,9 +667,9 @@ Usage:
 Shortcut:
   videosays "<video-link-or-share-text>"
 
-Creation semantics:
-  Every transcribe or batch submission creates a new server resource.
-  Save the returned ID and use status commands for later checks.
+Duplicate semantics:
+  Repeated videos reuse this account's active or completed task by default.
+  Use --force-new only when a fresh, normally billed transcription is required.
 
 Configuration:
   API key file: ~/.videosays

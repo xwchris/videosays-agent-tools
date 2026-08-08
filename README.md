@@ -32,7 +32,7 @@ The CLI stores your API key in `~/.videosays`. You can also provide it through `
 
 首次使用会打开浏览器授权，CLI 会把 API key 保存到 `~/.videosays`。也可以通过 `VIDEOSAYS_API_KEY` 环境变量提供。
 
-Each accepted `transcribe` or `batch` invocation creates a new server resource, even for the same input. Capture the returned Task ID or Batch ID and use `status` commands for later checks. Batch files preserve duplicate lines as independent items.
+Repeated videos reuse the same account's active task or completed result by default, without another transcription charge. Every submission carries an idempotency key so a network retry returns the same resource. Use `--force-new` only when a fresh, normally billed transcription is required; keep using `status` commands for later checks.
 
 ## Agent Skill
 
