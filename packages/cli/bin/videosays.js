@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 import { chmodSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { homedir, platform } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
 
 const require = createRequire(import.meta.url);
 const { version: VERSION } = require('../package.json');
@@ -14,6 +14,7 @@ const CONFIG_FILE = join(homedir(), '.videosays');
 const DEFAULT_TRANSCRIBE_WAIT_SECONDS = 120;
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
 const RECHARGE_URL = 'https://videosays.com/dashboard/billing';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const colors = {
   red: (s) => `\x1b[0;31m${s}\x1b[0m`,
@@ -152,7 +153,7 @@ function getApiKey() {
 async function requestJson(method, path, body, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (options.apiKey) headers['X-API-Key'] = options.apiKey;
-  const retryableRequest = method === 'GET' || Boolean(headers['Idempotency-Key']);
+  const retryableRequest = method === 'GET';
   const maxAttempts = retryableRequest ? 3 : 1;
   let lastNetworkError;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -170,7 +171,12 @@ async function requestJson(method, path, body, options = {}) {
         await sleep(500 * 2 ** (attempt - 1));
         continue;
       }
-      error('Request failed. Check your network connection.', { code: 'network_error' });
+      error('Request failed. Check your network connection.', {
+        code: 'network_error',
+        next: options.submissionId
+          ? `If the server may have accepted it, retry with --submission-id ${options.submissionId}.`
+          : undefined,
+      });
     }
 
     const data = await response.json().catch(() => null);
@@ -182,10 +188,16 @@ async function requestJson(method, path, body, options = {}) {
     }
     if (!response.ok && !options.allowStatuses?.includes(response.status)) {
       const apiError = typeof data.error === 'object' ? data.error : { message: data.error };
+      const code = data.code || apiError?.code;
+      const retryHint = code === 'idempotency_key_conflict'
+        ? 'This submission id belongs to a different request; use a new --submission-id only for a new request.'
+        : options.submissionId
+          ? `If the server may have accepted it, retry with --submission-id ${options.submissionId}.`
+          : undefined;
       error(apiError?.message || `Request failed (${response.status})`, {
-        code: data.code || apiError?.code,
+        code,
         status: response.status,
-        next: data.next || apiError?.next,
+        next: data.next || apiError?.next || retryHint,
         rechargeUrl: data.rechargeUrl || apiError?.rechargeUrl,
       });
     }
@@ -231,6 +243,43 @@ function optionValue(args, name, fallback = null) {
 
 function hasFlag(args, name) {
   return args.includes(name);
+}
+
+function submissionIdFor(args = []) {
+  const optionIndex = args.indexOf('--submission-id');
+  if (optionIndex !== -1 && (!args[optionIndex + 1] || args[optionIndex + 1].startsWith('--'))) {
+    error('Missing value for --submission-id. Use a UUID.', {
+      code: 'invalid_submission_id',
+    });
+  }
+  const requested = optionValue(args, '--submission-id');
+  if (requested) {
+    if (!UUID_PATTERN.test(requested)) {
+      error('Invalid --submission-id. Use a UUID, for example 123e4567-e89b-12d3-a456-426614174000.', {
+        code: 'invalid_submission_id',
+      });
+    }
+    return requested.toLowerCase();
+  }
+  return randomUUID();
+}
+
+function duplicatePolicyFor(args = []) {
+  const policyIndex = args.indexOf('--duplicate-policy');
+  if (policyIndex !== -1 && (!args[policyIndex + 1] || args[policyIndex + 1].startsWith('--'))) {
+    error('Missing value for --duplicate-policy. Use reuse, prompt, or force_new.', {
+      code: 'invalid_duplicate_policy',
+    });
+  }
+  const requested = hasFlag(args, '--force-new')
+    ? 'force_new'
+    : optionValue(args, '--duplicate-policy', 'reuse');
+  if (!['reuse', 'prompt', 'force_new'].includes(requested)) {
+    error('Invalid duplicate policy. Use reuse, prompt, or force_new.', {
+      code: 'invalid_duplicate_policy',
+    });
+  }
+  return requested;
 }
 
 function stripFlags(args, flagsWithValues = []) {
@@ -390,11 +439,11 @@ function outputTaskResult(task, format) {
   console.log(formatTaskResult(task, format));
 }
 
-function outputPendingTask(taskId, status, format, reuse = null) {
+function outputPendingTask(taskId, status, format, submissionId = null) {
   console.log(`VIDEOSAYS_TASK_PENDING
 task_id=${taskId}
 status=${status || 'processing'}
-${reuse?.reused ? `reused=true\ncanonical_task_id=${reuse.canonicalTaskId || taskId}\n` : ''}next=videosays status ${taskId}${format && format !== 'text' ? ` --format ${format}` : ''}`);
+${submissionId ? `submission_id=${submissionId}\n` : ''}next=videosays status ${taskId}${format && format !== 'text' ? ` --format ${format}` : ''}`);
 }
 
 async function cmdTranscribe(input, args = []) {
@@ -405,27 +454,28 @@ async function cmdTranscribe(input, args = []) {
   const format = parseResultFormat(args);
   const timeoutSeconds = Number(optionValue(args, '--timeout', String(DEFAULT_TRANSCRIBE_WAIT_SECONDS))) || DEFAULT_TRANSCRIBE_WAIT_SECONDS;
   const intervalSeconds = Number(optionValue(args, '--poll-interval', String(DEFAULT_POLL_INTERVAL_SECONDS))) || DEFAULT_POLL_INTERVAL_SECONDS;
-  const duplicatePolicy = hasFlag(args, '--force-new') ? 'force_new' : 'reuse';
+  const submissionId = submissionIdFor(args);
+  const duplicatePolicy = duplicatePolicyFor(args);
   progress(`Submitting transcription: ${input.substring(0, 120)}`);
 
   const task = await apiCall('POST', '/api/v1/transcribe', {
     input,
-    tracking: getClientTracking(),
+    tracking: { ...getClientTracking(), submissionId },
     options: { duplicatePolicy },
   }, {
-    headers: { 'Idempotency-Key': randomUUID() },
+    headers: { 'Idempotency-Key': submissionId },
+    submissionId,
   });
   const taskId = task.taskId || task.id;
   if (!taskId) error('Task creation failed. No taskId returned.');
 
   if (task.status === 'completed') {
-    if (task.reuse?.reused) progress(`Reused existing transcript: ${task.reuse.canonicalTaskId || taskId}`);
     outputTaskResult(task, format);
     return;
   }
 
   if (!hasFlag(args, '--wait')) {
-    outputPendingTask(taskId, task.status, format, task.reuse);
+    outputPendingTask(taskId, task.status, format, submissionId);
     return;
   }
 
@@ -452,7 +502,7 @@ async function cmdTranscribe(input, args = []) {
     progress(`Waiting... (${elapsed}s, status: ${poll.status})`);
   }
 
-  outputPendingTask(taskId, lastStatus, format, task.reuse);
+  outputPendingTask(taskId, lastStatus, format, submissionId);
 }
 
 async function cmdStatus(taskId, args = []) {
@@ -496,6 +546,10 @@ function outputBatch(batch, outputPath = null) {
   process.stdout.write(rendered);
 }
 
+function batchWithSubmissionId(batch, submissionId) {
+  return submissionId ? { ...batch, submission_id: submissionId } : batch;
+}
+
 function batchWithNext(batch) {
   if (!batch?.batchId) return batch;
   if (batchNeedsContinuation(batch)) {
@@ -522,15 +576,15 @@ async function loadCompletedBatch(batch) {
   return apiCall('GET', `/api/v1/batches/${encodeURIComponent(batch.batchId)}`);
 }
 
-async function waitForBatch(batch, rawArgs) {
+async function waitForBatch(batch, rawArgs, submissionId = null) {
   const timeoutSeconds = Number(optionValue(rawArgs, '--timeout', String(DEFAULT_TRANSCRIBE_WAIT_SECONDS))) || DEFAULT_TRANSCRIBE_WAIT_SECONDS;
   const outputPath = optionValue(rawArgs, '--output');
   if (batchNeedsContinuation(batch)) {
-    outputBatch(batchWithNext(batch), outputPath);
+    outputBatch(batchWithNext(batchWithSubmissionId(batch, submissionId)), outputPath);
     return;
   }
   if (isTerminalBatch(batch)) {
-    outputBatch(batch, outputPath);
+    outputBatch(batchWithSubmissionId(batch, submissionId), outputPath);
     return;
   }
 
@@ -543,18 +597,18 @@ async function waitForBatch(batch, rawArgs) {
     if (Date.now() - startedAt >= timeoutSeconds * 1000) break;
     batch = await loadBatchStatus(batch.batchId);
     if (batchNeedsContinuation(batch)) {
-      outputBatch(batchWithNext(batch), outputPath);
+      outputBatch(batchWithNext(batchWithSubmissionId(batch, submissionId)), outputPath);
       return;
     }
     if (isTerminalBatch(batch)) {
-      outputBatch(await loadCompletedBatch(batch), outputPath);
+      outputBatch(batchWithSubmissionId(await loadCompletedBatch(batch), submissionId), outputPath);
       return;
     }
     progress(`Waiting for batch... (${batch.summary?.completed ?? 0}/${batch.summary?.total ?? 0} completed)`);
     pollDelaySeconds = Math.min(15, Number(batch.retryAfterSeconds) || Math.ceil(pollDelaySeconds * 1.5));
   }
 
-  outputBatch(batchWithNext(batch), outputPath);
+  outputBatch(batchWithNext(batchWithSubmissionId(batch, submissionId)), outputPath);
 }
 
 async function cmdBatch(args = [], rawArgs = []) {
@@ -588,20 +642,22 @@ async function cmdBatch(args = [], rawArgs = []) {
   const lines = rawInput.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   if (!lines.length) error('Input file contains no links.', { code: 'empty_batch' });
   if (lines.length > 100) error('A batch can contain at most 100 items.', { code: 'batch_too_large' });
+  const submissionId = submissionIdFor(rawArgs);
+  const duplicatePolicy = duplicatePolicyFor(rawArgs);
   const batch = await apiCall('POST', '/api/v1/batches', {
     items: lines,
+    options: { duplicatePolicy },
     tracking: {
       ...getClientTracking(),
       clientName: process.env.VIDEOSAYS_CLIENT_NAME || 'videosays-cli-batch',
-    },
-    options: {
-      duplicatePolicy: hasFlag(rawArgs, '--force-new') ? 'force_new' : 'reuse',
+      submissionId,
     },
   }, {
-    headers: { 'Idempotency-Key': randomUUID() },
+    headers: { 'Idempotency-Key': submissionId },
+    submissionId,
   });
-  if (hasFlag(rawArgs, '--wait')) await waitForBatch(batch, rawArgs);
-  else outputBatch(batchWithNext(batch), optionValue(rawArgs, '--output'));
+  if (hasFlag(rawArgs, '--wait')) await waitForBatch(batch, rawArgs, submissionId);
+  else outputBatch(batchWithNext(batchWithSubmissionId(batch, submissionId)), optionValue(rawArgs, '--output'));
 }
 
 async function cmdBalance() {
@@ -648,14 +704,16 @@ Usage:
   videosays logout
   videosays whoami
   videosays transcribe <video-link-or-share-text>
+  videosays transcribe <video-link-or-share-text> --force-new
+  videosays transcribe <video-link-or-share-text> --submission-id <uuid>
   videosays transcribe <video-link-or-share-text> --format text
   videosays transcribe <video-link-or-share-text> --format timeline
   videosays transcribe <video-link-or-share-text> --format srt
-  videosays transcribe <video-link-or-share-text> --force-new
   videosays status <taskId>
   videosays status <taskId> --format vtt
   videosays batch <links.txt>
   videosays batch <links.txt> --force-new
+  videosays batch <links.txt> --submission-id <uuid>
   videosays batch continue <batch-id>
   videosays batch status <batch-id>
   videosays batch cancel <batch-id>
@@ -667,9 +725,12 @@ Usage:
 Shortcut:
   videosays "<video-link-or-share-text>"
 
-Duplicate semantics:
-  Repeated videos reuse this account's active or completed task by default.
-  Use --force-new only when a fresh, normally billed transcription is required.
+Creation semantics:
+  Each submission gets a client submission id for safe network retries.
+  Repeating the same id returns the original Task or Batch; the server also
+  reuses equivalent active work for the same account. Completed work is reused
+  by default. Use --force-new when a fresh transcription is intentional.
+  Save the returned server ID and use status commands for later checks.
 
 Configuration:
   API key file: ~/.videosays
@@ -701,7 +762,15 @@ if (rawArgs.includes('--help') || rawArgs.includes('-h')) {
   process.exit(0);
 }
 
-const args = stripFlags(rawArgs, ['--api-key', '--timeout', '--poll-interval', '--format', '--output']);
+const args = stripFlags(rawArgs, [
+  '--api-key',
+  '--timeout',
+  '--poll-interval',
+  '--format',
+  '--output',
+  '--submission-id',
+  '--duplicate-policy',
+]);
 const command = args[0];
 
 switch (command) {

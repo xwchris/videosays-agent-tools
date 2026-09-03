@@ -32,7 +32,7 @@ The CLI stores your API key in `~/.videosays`. You can also provide it through `
 
 首次使用会打开浏览器授权，CLI 会把 API key 保存到 `~/.videosays`。也可以通过 `VIDEOSAYS_API_KEY` 环境变量提供。
 
-Repeated videos reuse the same account's active task or completed result by default, without another transcription charge. Every submission carries an idempotency key so a network retry returns the same resource. Use `--force-new` only when a fresh, normally billed transcription is required; keep using `status` commands for later checks.
+Each submission carries a client-generated `submissionId` (`Idempotency-Key`). Repeating the same submission with the same id returns the original server Task or Batch; equivalent active work for the same account is also reused. Completed work is reused by default. Use `--force-new` when a fresh transcription is intentional. Capture the returned server Task ID or Batch ID and use `status` commands for later checks. Batch files preserve duplicate lines as independent items.
 
 ## Agent Skill
 
@@ -140,6 +140,8 @@ videosays login --api-key <api-key>
 videosays logout
 videosays whoami
 videosays transcribe <video-link-or-share-text>
+videosays transcribe <video-link-or-share-text> --force-new
+videosays transcribe <video-link-or-share-text> --submission-id <uuid>
 videosays transcribe <video-link-or-share-text> --format text
 videosays transcribe <video-link-or-share-text> --format timeline
 videosays transcribe <video-link-or-share-text> --format srt
@@ -147,6 +149,8 @@ videosays transcribe <video-link-or-share-text> --format vtt
 videosays status <taskId>
 videosays status <taskId> --format srt
 videosays batch <links.txt>
+videosays batch <links.txt> --force-new
+videosays batch <links.txt> --submission-id <uuid>
 videosays batch status <batch-id>
 videosays batch continue <batch-id>
 videosays batch cancel <batch-id>
