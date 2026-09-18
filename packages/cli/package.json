@@ -1,6 +1,6 @@
 {
   "name": "videosays",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "description": "Videosays CLI for video transcripts, spoken scripts, subtitles, and batch transcription.",
   "type": "module",
   "bin": {
