@@ -1,7 +1,7 @@
 {
-  "display_name": "视频文案提取 · Videosays",
+  "display_name": "抖音文案提取 · Videosays",
   "display_name_en": "Videosays · Video to Text",
-  "description_zh": "用于抖音文案提取、小红书视频转文字，以及 B站、YouTube 等视频的口播稿和字幕提取。支持批量处理、带时间轴的逐字稿和 SRT/VTT 字幕导出。需要登录 Videosays 并有可用分钟数。",
+  "description_zh": "粘贴抖音、小红书、B站或 YouTube 视频链接，提取口播文案、视频转文字，导出带时间轴的逐字稿或 SRT/VTT 字幕。支持多个链接批量处理。需要登录 Videosays 并有可用分钟数。",
   "description_en": "Turn video links into transcripts, timestamped text, or SRT/VTT subtitles. Supports batch transcription across YouTube, TikTok, Douyin, Xiaohongshu, and other supported platforms. Requires a Videosays account and available credits.",
   "author": "Wegofuture"
 }
