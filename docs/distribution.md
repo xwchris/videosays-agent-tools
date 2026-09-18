@@ -8,8 +8,8 @@ Use this checklist when publishing or updating the Videosays agent skill.
 - [GitHub release](https://github.com/xwchris/videosays-agent-tools/releases/tag/v1.2.8): portable and WorkBuddy ZIPs are available. The WorkBuddy listing metadata includes commit `c514b3e`; its execution instructions match tag `v1.2.8`.
 - ClawHub: `@wegofuture/videosays` version `1.2.8` is public; its security scan reports `clean` with no warnings.
 - Website: `https://videosays.cn/SKILL.md` and `https://videosays.com/SKILL.md` match the canonical file byte for byte after web commit `40e1b09` deployed to both regions.
-- WorkBuddy native listing: package ready, submission blocked by required publisher identity verification. It has not been submitted or approved.
-- SkillHub mirror: the old `@clawhub_xwchris/videosays` entry is still version `1.0.0`. The dashboard requires identity verification before GitHub binding, ownership claims, and publication. Verify the upstream owner during the claim; do not create another duplicate to work around it.
+- WorkBuddy native listing: package ready; the separate WorkBuddy publisher identity verification is still required. Its personal verification form has not been completed. The Skill has not been submitted or approved.
+- SkillHub mirror: identity verification has passed and GitHub `kenny-shaw` is bound. The old `@clawhub_xwchris/videosays` entry is still unclaimed at version `1.0.0`, with upstream owner `xwchris`. The current account has no edit control for it, and GitHub import does not offer the Videosays repository. Continue the claim with the actual upstream owner's GitHub identity. Do not bulk-claim unrelated Skills or create another duplicate to work around ownership.
 
 Current Chinese title: **抖音文案提取 · 视频说**. The Chinese summary identifies the service as **视频说（Videosays）**; the English brand and machine identifier remain **Videosays** and `videosays`.
 
