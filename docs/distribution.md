@@ -37,7 +37,7 @@ Repository arrangement:
 - Keep the stable machine identifier `videosays` and one shared execution workflow.
 - Portable `SKILL.md`: one English description and one English instruction body. English is this repository's maintenance choice, not a requirement of the Agent Skills standard. Agents respond in the user's language; API origin does not depend on that language.
 - WorkBuddy: Chinese `display_name`, `description`, and `description_zh`; English `display_name_en` and `description_en`. The locale fields are WorkBuddy-specific top-level fields, not part of the portable Agent Skills frontmatter. The generated package reuses the canonical instruction body verbatim.
-- Chinese display name: **抖音文案提取 · Videosays**. English display name: **Videosays · Video to Text**.
+- Chinese display name: **抖音文案提取 · 视频说**. English display name: **Videosays · Video to Text**.
 - For a registry with only one title/summary, select that channel's language instead of concatenating translations. The canonical ClawHub listing and GitHub/skills.sh distribution use English. A Chinese channel should use the Chinese listing copy and the same execution instructions. Do not create another discoverable skill ID merely to change language, or assume a registry automatically translates the body.
 
 The portable Agent Skills format specifies `name` and `description`, but no standard locale-switching fields. Channel-specific display metadata stays outside the canonical file. This keeps ordinary installers compatible without maintaining two workflows.

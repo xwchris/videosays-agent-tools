@@ -119,7 +119,7 @@ The `--path skills` flag is required because this repository keeps the canonical
 
 CLI requests default to `https://api.videosays.cn`. Official login and recharge links follow that API origin. Existing users should update with `npm install -g videosays@latest`, or use `npx videosays@latest`. An explicitly configured `VIDEOSAYS_API_URL` is preserved.
 
-默认 API、登录和充值入口使用 `.cn`。通用 Skill 的说明统一维护为英文，执行时按用户语言解释结果；原文和字幕不会被擅自翻译。中文市场使用“抖音文案提取 · Videosays”和中文简介，国际渠道使用英文展示文案。
+默认 API、登录和充值入口使用 `.cn`。通用 Skill 的说明统一维护为英文，执行时按用户语言解释结果；原文和字幕不会被擅自翻译。中文市场使用“抖音文案提取 · 视频说”和中文简介，国际渠道使用英文展示文案。
 
 WorkBuddy supports separate Chinese and English listing fields. Build its upload package from the same skill instructions:
 
