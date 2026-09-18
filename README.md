@@ -60,6 +60,8 @@ skilluse install videosays --agent codex --global
 
 `skills/videosays/SKILL.md` 是分发平台使用的 canonical skill。根目录 `SKILL.md` 和网站公开版本 `https://videosays.cn/SKILL.md` 需要保持同步。
 
+国内 Agent 的公开投稿、个人导入和审核进度见[分发记录](docs/china-agent-channels.md)。Qoder 已提交中文条目，当前待审核；MiniMax 公共市场已能搜到 `videosays` 和中文简介。
+
 ## Output Formats
 
 ```bash
