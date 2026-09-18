@@ -2,7 +2,7 @@
   "name": "videosays-agent-tools",
   "version": "1.0.0",
   "private": true,
-  "description": "Videosays CLI and agent skill for video transcription, video to text, speech to text, subtitles, and AI agent workflows",
+  "description": "Videosays CLI and agent skill for video transcripts, spoken scripts, subtitles, and batch transcription.",
   "type": "module",
   "workspaces": [
     "packages/*"
@@ -11,6 +11,7 @@
     "help": "node packages/cli/bin/videosays.js help",
     "cli": "node packages/cli/bin/videosays.js",
     "check:skill-sync": "bash scripts/check-skill-sync.sh",
+    "build:skill:workbuddy": "node scripts/build-workbuddy-skill.mjs",
     "test": "node --test packages/cli/tests/*.test.mjs && npm run check:skill-sync",
     "release": "node scripts/release.mjs"
   },
@@ -48,7 +49,11 @@
     "cli",
     "skill",
     "agent-skill",
-    "SKILL.md"
+    "SKILL.md",
+    "视频文案提取",
+    "抖音文案提取",
+    "视频转文字",
+    "字幕提取"
   ],
   "author": "xwchris",
   "license": "MIT"

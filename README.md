@@ -8,7 +8,7 @@ AI-agent-friendly CLI and `SKILL.md` package for video transcription, video to t
 
 Videosays turns supported video links or share text into clean transcript text, timestamped timelines, SRT subtitles, and VTT subtitles. It is built for humans using a terminal and for AI agents using a skill.
 
-中文：Videosays 是面向 AI Agent 和命令行用户的视频转文字工具，支持把公开视频链接或分享文本转成纯文本、带时间轴文本、SRT 字幕和 VTT 字幕。
+中文：Videosays 是面向 AI Agent 和命令行用户的视频文案提取工具，支持抖音文案提取、小红书视频转文字等，可把公开视频链接或分享文本转成纯文本、带时间轴文本、SRT 字幕和 VTT 字幕。
 
 Supported platforms include Douyin, TikTok, Instagram Reels, X (Twitter), Xiaohongshu, Bilibili, YouTube, and Kuaishou. Availability can vary by source video accessibility, region, platform restrictions, and whether captions or transcribable audio are available.
 
@@ -39,7 +39,7 @@ Each submission carries a client-generated `submissionId` (`Idempotency-Key`). R
 Use Videosays from an AI agent by giving it this prompt:
 
 ```text
-Read https://videosays.com/SKILL.md, install the Videosays Skill if your environment supports skills, and help me transcribe this public video link.
+Read https://videosays.cn/SKILL.md, install the Videosays Skill if your environment supports skills, and help me transcribe this public video link.
 ```
 
 Or install the skill from this repository:
@@ -56,9 +56,9 @@ skilluse repo add xwchris/videosays-agent-tools --path skills --branch main --de
 skilluse install videosays --agent codex --global
 ```
 
-`skills/videosays/SKILL.md` is the canonical skill entry for registry distribution. The root `SKILL.md` and the website copy at `https://videosays.com/SKILL.md` should stay byte-for-byte in sync with it.
+`skills/videosays/SKILL.md` is the canonical skill entry for registry distribution. The root `SKILL.md` and the website copy at `https://videosays.cn/SKILL.md` should stay byte-for-byte in sync with it.
 
-`skills/videosays/SKILL.md` 是分发平台使用的 canonical skill。根目录 `SKILL.md` 和网站公开版本 `https://videosays.com/SKILL.md` 需要保持同步。
+`skills/videosays/SKILL.md` 是分发平台使用的 canonical skill。根目录 `SKILL.md` 和网站公开版本 `https://videosays.cn/SKILL.md` 需要保持同步。
 
 ## Output Formats
 
@@ -101,7 +101,7 @@ Publish updates after signing in to ClawHub with access to the `wegofuture` publ
 
 ```bash
 clawhub login
-clawhub skill publish skills/videosays --owner wegofuture
+clawhub skill publish skills/videosays --owner wegofuture --name "Videosays · Video to Text"
 ```
 
 ### SkillUse
@@ -114,6 +114,20 @@ skilluse install videosays --agent codex --global
 ```
 
 The `--path skills` flag is required because this repository keeps the canonical skill at `skills/videosays/SKILL.md` for registry compatibility. Omit `--global` if you want SkillUse to install into the current project's local agent skill directory instead.
+
+## Language and domestic access
+
+CLI requests default to `https://api.videosays.cn`. Official login and recharge links follow that API origin. Existing users should update with `npm install -g videosays@latest`, or use `npx videosays@latest`. An explicitly configured `VIDEOSAYS_API_URL` is preserved.
+
+默认 API、登录和充值入口使用 `.cn`。通用 Skill 的说明统一维护为英文，执行时按用户语言解释结果；原文和字幕不会被擅自翻译。中文市场使用“视频文案提取 · Videosays”和中文简介，国际渠道使用英文展示文案。
+
+WorkBuddy supports separate Chinese and English listing fields. Build its upload package from the same skill instructions:
+
+```bash
+npm run build:skill:workbuddy
+```
+
+This writes `dist/workbuddy/videosays/SKILL.md` and a versioned ZIP. Build requires Node.js and `zip`. The WorkBuddy fields live in `distribution/workbuddy.json`; do not manually maintain a second copy of the execution instructions. Marketplace publication and SkillHub mirror updates are separate from this local build. See [distribution](docs/distribution.md).
 
 ## Maintenance
 
@@ -163,9 +177,9 @@ Batch progress checks use lightweight status responses. The CLI downloads comple
 
 ## Links
 
-- Website: https://videosays.com/?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill
-- Public skill: https://videosays.com/SKILL.md
-- API docs: https://videosays.com/docs?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill&utm_content=api_docs
+- Website: https://videosays.cn/?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill
+- Public skill: https://videosays.cn/SKILL.md
+- API docs: https://videosays.cn/docs?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill&utm_content=api_docs
 - CLI package: `videosays`
 
 ## License

@@ -4,7 +4,7 @@ AI-agent-friendly CLI for video transcription, video to text, speech to text, su
 
 Videosays turns supported video links or share text into clean transcript text, timestamped timelines, SRT subtitles, and VTT subtitles.
 
-中文：Videosays 是面向 AI Agent 和命令行用户的视频转文字 CLI，支持把公开视频链接或分享文本转成纯文本、带时间轴文本、SRT 字幕和 VTT 字幕。
+中文：Videosays 是面向 AI Agent 和命令行用户的视频文案提取 CLI，支持抖音文案提取、小红书视频转文字等，可把公开视频链接或分享文本转成纯文本、带时间轴文本、SRT 字幕和 VTT 字幕。
 
 Supported platforms include Douyin, TikTok, Xiaohongshu, Bilibili, YouTube, and Kuaishou. Availability can vary by source video accessibility, region, platform restrictions, and whether captions or transcribable audio are available.
 
@@ -113,19 +113,29 @@ Errors are printed to stderr and exit non-zero:
 Error: 余额不足，请充值后再提交任务。
 Code: insufficient_credits
 Next: videosays balance
-Recharge: https://videosays.com/dashboard/billing
+Recharge: https://videosays.cn/dashboard/billing
 ```
 
 ## Configuration
 
-The API key is saved to `~/.videosays` by default.
+The API key is saved to `~/.videosays` by default. The default API and official login/recharge pages use `.cn`; the same account and credits are available through both domains. Existing installations must update (`npm install -g videosays@latest`, or use `npx videosays@latest`) to receive this change.
+
+默认使用 `api.videosays.cn`，登录和充值页面也使用 `.cn`。账号和分钟数不变。已经安装过的 CLI 需要更新；临时设置 API 环境变量只能修改 API 请求，旧版 CLI 的登录和充值链接仍可能指向 `.com`。
 
 Environment variables:
 
 ```bash
 export VIDEOSAYS_API_KEY="vs_xxxxx"
+export VIDEOSAYS_API_URL="https://api.videosays.cn"
+```
+
+An explicit `VIDEOSAYS_API_URL` still takes precedence. For the global endpoint:
+
+```bash
 export VIDEOSAYS_API_URL="https://api.videosays.com"
 ```
+
+The CLI does not switch endpoints automatically or retry a submission against a second domain. Interface language and API origin are separate choices.
 
 ## License
 

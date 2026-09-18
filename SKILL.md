@@ -1,11 +1,20 @@
 ---
 name: videosays
-description: Videosays video transcription, video to text, speech to text, subtitle extraction, caption transcription, YouTube transcript, TikTok transcript, Instagram Reels transcript, X or Twitter video transcript, Douyin transcript, Xiaohongshu transcript, WeChat Channels transcript, and AI agent video transcription. Use when the user asks to transcribe one or more video links, extract spoken text, generate subtitles, check credit balance, or view transcription history.
+description: Transcribe video links and extract spoken scripts or subtitles from Douyin, Xiaohongshu, Bilibili, YouTube, TikTok, and other supported platforms. Use for single or batch transcription, timestamped transcripts, SRT/VTT export, credit balance, and transcription history.
 ---
 
-# Videosays Video Transcription
+# Videosays Video to Text
 
 Use `npx videosays` to submit video links and retrieve transcript text or subtitles. The CLI sends the configured API key and submitted links/share text to Videosays.
+
+Accept video links or copied share text when the user asks for a spoken script, transcript, or subtitle file. The CLI does not accept local video files. Source accessibility and supported content depend on the service response.
+
+## Language and API
+
+- Reply in the user's language: Chinese for Chinese requests, English for English requests. Explain CLI errors in that language; preserve command names, task IDs, and subtitle timestamps.
+- Return the actual transcript in its original language. Summarize or translate it only when requested, and distinguish that work from the source transcript.
+- The CLI's default API is `https://api.videosays.cn`, serving the same backend and accounts as `.com`. Language does not select a different backend. Honor an explicitly configured `VIDEOSAYS_API_URL`.
+- Existing installations need a CLI update to receive the new default: `npm install -g videosays@latest`, or use `npx videosays@latest`. An older CLI can call the API with `VIDEOSAYS_API_URL=https://api.videosays.cn`, but its login/recharge links may still use `.com` until upgraded.
 
 ## Requirements
 
@@ -81,15 +90,15 @@ VIDEOSAYS_CLIENT_SURFACE=agent_skill VIDEOSAYS_CLIENT_NAME=videosays-skill npx v
 npx videosays batch status "<batch-id>"
 ```
 
-5. Repeat status checks until the batch reaches `completed`, `partial`, `failed`, or `cancelled`, or reports a resumable `paused` state.
+5. Repeat status checks until the batch reaches `completed`, `partial`, `failed`, `cancelled`, or `paused`. Stop polling when paused and explain what is needed to continue.
 
 While a batch is running, `batch status` uses a lightweight status response. When the batch finishes, the CLI retrieves the complete results once. Do not replace this with per-Task polling.
 
 Every `batch <file>` submission sends a client-generated `Idempotency-Key`. Repeat an ambiguous submission with the same `--submission-id <uuid>` to receive the original server Batch ID; an equivalent active batch for the same account also converges on one Batch ID. Completed work is reused by default. Use `--force-new` only for an intentional fresh batch. Batch submission and status commands return promptly. Do not rerun the input file as a status check, do not invent a Batch ID, and do not use `batch resume`.
 
-If batch submission ends before printing a Batch ID, do not automatically submit the file with a new id: the server may already have accepted it. Retry with the same `--submission-id` if one was printed, or report the ambiguous outcome and get confirmation before creating a replacement batch with `--force-new`.
+If batch submission ends before printing a Batch ID, do not automatically submit the file with a new id: the server may already have accepted it. Retry with the same `--submission-id` if one is available; otherwise check recent tasks and report the ambiguous outcome if it cannot be recovered.
 
-Videosays creates every batch item as an ordinary Task and runs those Tasks through the normal queue. Each Task must reserve credit atomically before provider submission, so the balance cannot be overspent. If the batch reports `paused` or `stopReason` is `insufficient_credits`, completed Tasks are preserved and unstarted Tasks wait to be resumed. Ask the user to top up, then after confirmation run:
+Videosays creates every batch item as an ordinary Task and runs those Tasks through the normal queue. Each Task must reserve credit atomically before provider submission, so the balance cannot be overspent. If the batch reports `paused`, `continuation.required`, or `stopReason: insufficient_credits`, completed Tasks are preserved and unstarted Tasks may be skipped. Ask the user to top up, then after confirmation run:
 
 ```bash
 npx videosays batch continue "<batch-id>"
@@ -131,6 +140,8 @@ For `insufficient_credits`, do not repeatedly resubmit. Report the balance issue
 
 ## Links
 
-- Website: https://videosays.com/?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill
-- API docs: https://videosays.com/docs?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill&utm_content=api_docs
+- Website (China): https://videosays.cn/?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill
+- API: https://api.videosays.cn
+- API docs: https://videosays.cn/docs?utm_source=videosays_skill&utm_medium=agent_skill&utm_campaign=videosays_agent_skill&utm_content=api_docs
+- Global website: https://videosays.com
 - CLI: https://www.npmjs.com/package/videosays

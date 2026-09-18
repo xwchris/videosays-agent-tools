@@ -6,14 +6,16 @@ import { createRequire } from 'node:module';
 import { homedir, platform } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
+import { DEFAULT_API_URL, getApiUrl, getWebsiteUrl, resolveWebsiteLink } from './origins.js';
 
 const require = createRequire(import.meta.url);
 const { version: VERSION } = require('../package.json');
-const API_URL = (process.env.VIDEOSAYS_API_URL || 'https://api.videosays.com').replace(/\/$/, '');
+const API_URL = getApiUrl();
 const CONFIG_FILE = join(homedir(), '.videosays');
 const DEFAULT_TRANSCRIBE_WAIT_SECONDS = 120;
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
-const RECHARGE_URL = 'https://videosays.com/dashboard/billing';
+const WEBSITE_URL = getWebsiteUrl(API_URL);
+const RECHARGE_URL = `${WEBSITE_URL}/dashboard/billing`;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const colors = {
@@ -53,7 +55,7 @@ function error(message, details = {}) {
     console.error(`Next: ${normalizedError.next}`);
   }
   if (normalizedError.rechargeUrl) {
-    console.error(`Recharge: ${normalizedError.rechargeUrl}`);
+    console.error(`Recharge: ${resolveWebsiteLink(normalizedError.rechargeUrl, API_URL)}`);
   }
   process.exit(1);
 }
@@ -313,13 +315,14 @@ async function cmdLogin(args = []) {
   }
 
   const { data: session } = await requestJson('POST', '/api/v1/cli/sessions');
-  const opened = openBrowser(session.verificationUrl);
+  const verificationUrl = resolveWebsiteLink(session.verificationUrl, API_URL);
+  const opened = openBrowser(verificationUrl);
   const expiresAt = new Date(session.expiresAt).getTime();
   const pollIntervalMs = Math.max(1, Number(session.pollIntervalSeconds) || 2) * 1000;
 
   info(colors.bold('Videosays CLI login'));
   info('');
-  info(`Open this URL to authorize the CLI: ${colors.cyan(session.verificationUrl)}`);
+  info(`Open this URL to authorize the CLI: ${colors.cyan(verificationUrl)}`);
   info(`Code: ${colors.bold(session.userCode)}`);
   if (opened) info('A browser window was opened automatically.');
   info('');
@@ -735,7 +738,7 @@ Creation semantics:
 Configuration:
   API key file: ~/.videosays
   VIDEOSAYS_API_KEY   API key, preferred over config file
-  VIDEOSAYS_API_URL   API URL (default: https://api.videosays.com)
+  VIDEOSAYS_API_URL   API URL (default: ${DEFAULT_API_URL})
 
 Examples:
   videosays login
@@ -746,7 +749,7 @@ Examples:
   videosays status 123e4567-e89b-12d3-a456-426614174000
   videosays balance
 
-Website: https://videosays.com
+Website: ${WEBSITE_URL}
 API:     ${API_URL}`);
 }
 
