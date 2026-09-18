@@ -187,7 +187,7 @@ The CLI supports plain text output by default, timestamped timeline output, and 
 
 ## Update Checklist
 
-1. Update `skills/videosays/SKILL.md`.
+1. Update `skills/videosays/SKILL.md`. Keep executable examples pinned to the tested npm CLI version; publish that CLI version before submitting the Skill to registries.
 2. Sync `SKILL.md` and the website `packages/web/public/SKILL.md`.
 3. Run `scripts/check-skill-sync.sh`.
 4. Publish npm CLI if CLI behavior changed.
