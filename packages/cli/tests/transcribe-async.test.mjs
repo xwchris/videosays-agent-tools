@@ -4,16 +4,21 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import http from 'node:http';
 
 const root = resolve(import.meta.dirname, '../../..');
 const cli = join(root, 'packages/cli/bin/videosays.js');
+const require = createRequire(import.meta.url);
+const { version } = require('../package.json');
 const home = mkdtempSync(join(tmpdir(), 'videosays-transcribe-test-'));
 let server;
 let apiUrl;
 let postCount = 0;
 let getCount = 0;
 let failNextPost = false;
+let dropNextPost = false;
+const submissionIds = [];
 
 before(async () => {
   server = http.createServer((request, response) => {
@@ -21,11 +26,19 @@ before(async () => {
     if (request.method === 'POST' && request.url === '/api/v1/transcribe') {
       postCount += 1;
       assert.match(request.headers['idempotency-key'], /^[0-9a-f-]{36}$/i);
+      assert.equal(request.headers['x-api-key'], 'test-key');
+      assert.equal(request.headers['user-agent'], `Videosays-CLI/${version}`);
+      submissionIds.push(request.headers['idempotency-key']);
       let raw = '';
       request.on('data', (chunk) => { raw += chunk; });
       request.on('end', () => {
         const body = JSON.parse(raw);
         assert.equal(body.options.duplicatePolicy, 'reuse');
+        if (dropNextPost) {
+          dropNextPost = false;
+          request.socket.destroy();
+          return;
+        }
         if (failNextPost) {
           failNextPost = false;
           response.statusCode = 503;
@@ -90,4 +103,19 @@ test('a failed creation request is not retried automatically', async () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Code: temporary_failure/);
   assert.equal(postCount, previousPostCount + 1);
+});
+
+test('a disconnected creation request retries with the same submission id', async () => {
+  const previousPostCount = postCount;
+  const submissionId = '123e4567-e89b-42d3-a456-426614174000';
+  dropNextPost = true;
+  const result = await run([
+    'transcribe',
+    'https://v.douyin.com/disconnected/',
+    '--submission-id',
+    submissionId,
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(postCount, previousPostCount + 2);
+  assert.deepEqual(submissionIds.slice(-2), [submissionId, submissionId]);
 });

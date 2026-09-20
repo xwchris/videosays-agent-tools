@@ -1,29 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
 import { getApiUrl, resolveWebsiteLink } from '../bin/origins.js';
 
-const require = createRequire(import.meta.url);
-const { version } = require('../package.json');
-
-test('default API reaches the cn endpoint and preserves the API key header', () => {
-  const script = `
-    import assert from 'node:assert/strict';
-    delete process.env.VIDEOSAYS_API_URL;
-    process.env.VIDEOSAYS_API_KEY = 'test-key';
-    process.argv = ['node', 'videosays', 'whoami'];
-    globalThis.fetch = async (url, options) => {
-      assert.equal(url, 'https://api.videosays.cn/api/v1/credits');
-      assert.equal(options.headers.Accept, 'application/json');
-      assert.equal(options.headers['User-Agent'], ${JSON.stringify(`Videosays-CLI/${version}`)});
-      assert.equal(options.headers['X-API-Key'], 'test-key');
-      return new Response(JSON.stringify({ balance: 2000 }), { status: 200 });
-    };
-    await import(${JSON.stringify(new URL('../bin/videosays.js', import.meta.url).href)});
-  `;
-  const result = spawnSync(process.execPath, ['--input-type=module', '--eval', script], { encoding: 'utf8' });
-  assert.equal(result.status, 0, result.stderr);
+test('default API uses the cn endpoint', () => {
+  assert.equal(getApiUrl(''), 'https://api.videosays.cn');
 });
 
 test('official login and billing links follow the selected API without losing parameters', () => {

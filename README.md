@@ -172,10 +172,13 @@ videosays batch continue <batch-id>
 videosays batch cancel <batch-id>
 videosays balance
 videosays history [limit]
+videosays doctor
 videosays help
 ```
 
 Batch progress checks use lightweight status responses. The CLI downloads complete Task results once at the end, and preserves completed work when a credit-limited batch is continued under the same Batch ID.
+
+HTTPS requests prefer HTTP/2. Safe network failures rotate through the API hostname's resolved IPv4/IPv6 addresses; submission retries reuse the exact same idempotency key and never fail over to another domain. Run `videosays doctor` for an unauthenticated connectivity report.
 
 ## Links
 

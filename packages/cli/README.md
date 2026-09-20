@@ -60,6 +60,7 @@ videosays batch continue <batch-id>
 videosays batch cancel <batch-id>
 videosays balance
 videosays history [limit]
+videosays doctor
 videosays help
 ```
 
@@ -118,7 +119,7 @@ Recharge: https://videosays.cn/dashboard/billing
 
 ## Configuration
 
-The API key is saved to `~/.videosays` by default. The default API and official login/recharge pages use `.cn`; the same account and credits are available through both domains. Existing installations must update to receive this change. For this tested release, use `npm install -g videosays@1.2.9` or `npx videosays@1.2.9`. Published Skill commands pin the same version.
+The API key is saved to `~/.videosays` by default. The default API and official login/recharge pages use `.cn`; the same account and credits are available through both domains. Existing installations must update to receive this change. For this tested release, use `npm install -g videosays@1.3.0` or `npx videosays@1.3.0`. Published Skill commands pin the same version.
 
 默认使用 `api.videosays.cn`，登录和充值页面也使用 `.cn`。账号和分钟数不变。已经安装过的 CLI 需要更新；临时设置 API 环境变量只能修改 API 请求，旧版 CLI 的登录和充值链接仍可能指向 `.com`。
 
@@ -129,13 +130,15 @@ export VIDEOSAYS_API_KEY="vs_xxxxx"
 export VIDEOSAYS_API_URL="https://api.videosays.cn"
 ```
 
+The CLI prefers HTTP/2 for HTTPS requests and rotates through resolved IPv4/IPv6 addresses when a safe request fails at the network layer. Read-only requests are retried, and a transcription or batch submission is retried only with its original `Idempotency-Key`. An explicit HTTP response from a submission is never retried automatically. Use `videosays doctor` to probe each resolved API address without an API key. `VIDEOSAYS_DISABLE_HTTP2=1` is available as a troubleshooting override.
+
 An explicit `VIDEOSAYS_API_URL` still takes precedence. For the global endpoint:
 
 ```bash
 export VIDEOSAYS_API_URL="https://api.videosays.com"
 ```
 
-The CLI does not switch endpoints automatically or retry a submission against a second domain. Interface language and API origin are separate choices.
+The CLI never switches endpoints or retries a submission against a second domain. Interface language and API origin are separate choices.
 
 ## License
 

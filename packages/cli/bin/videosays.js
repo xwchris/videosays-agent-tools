@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { homedir, platform } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
+import { diagnoseEndpoint, requestWithPreferredProtocol } from './http-transport.js';
 import { DEFAULT_API_URL, getApiUrl, getWebsiteUrl, resolveWebsiteLink } from './origins.js';
 
 const require = createRequire(import.meta.url);
@@ -161,22 +162,23 @@ async function requestJson(method, path, body, options = {}) {
     ...(options.headers || {}),
   };
   if (options.apiKey) headers['X-API-Key'] = options.apiKey;
-  const retryableRequest = method === 'GET';
+  const retryableRequest = method === 'GET' || Boolean(options.submissionId);
   const maxAttempts = retryableRequest ? 3 : 1;
+  const requestBody = body == null ? undefined : JSON.stringify(body);
   let lastNetworkError;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     let response;
     try {
-      response = await fetch(`${API_URL}${path}`, {
+      response = await requestWithPreferredProtocol(`${API_URL}${path}`, {
         method,
         headers,
-        body: body == null ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(30_000),
-      });
+        body: requestBody,
+        signal: AbortSignal.timeout(12_000),
+      }, attempt);
     } catch (networkError) {
       lastNetworkError = networkError;
       if (attempt < maxAttempts) {
-        await sleep(500 * 2 ** (attempt - 1));
+        await sleep(400 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250));
         continue;
       }
       error('Request failed. Check your network connection.', {
@@ -189,7 +191,7 @@ async function requestJson(method, path, body, options = {}) {
 
     const data = await response.json().catch(() => null);
     if (!data) error('Service returned a non-JSON response.', { status: response.status });
-    if ((response.status === 429 || response.status >= 500) && attempt < maxAttempts) {
+    if (method === 'GET' && (response.status === 429 || response.status >= 500) && attempt < maxAttempts) {
       const retryAfter = Number(response.headers.get('Retry-After') || data.retryAfter || data.error?.retryAfterSeconds || 0);
       await sleep(Math.max(500, Math.min(30_000, retryAfter * 1000 || 500 * 2 ** (attempt - 1))));
       continue;
@@ -212,6 +214,46 @@ async function requestJson(method, path, body, options = {}) {
     return { data, status: response.status, headers: response.headers };
   }
   error(lastNetworkError?.message || 'Request failed.', { code: 'network_error' });
+}
+
+async function cmdDoctor() {
+  const endpoint = new URL('/api/v1/credits', `${API_URL}/`).toString();
+  info(`Videosays network doctor\nEndpoint: ${endpoint}\n`);
+
+  let diagnosis;
+  try {
+    diagnosis = await diagnoseEndpoint(endpoint);
+  } catch (diagnosticError) {
+    error(`DNS lookup failed for ${new URL(endpoint).hostname}.`, {
+      code: diagnosticError?.code || 'dns_error',
+      next: 'Check DNS/network settings, then run videosays doctor again.',
+    });
+  }
+
+  info(`DNS: ${diagnosis.addresses.length} address${diagnosis.addresses.length === 1 ? '' : 'es'}`);
+  for (const probe of diagnosis.probes) {
+    const family = probe.family === 6 ? 'IPv6' : 'IPv4';
+    if (probe.ok) {
+      const edge = probe.edgeColo ? ` edge=${probe.edgeColo}` : '';
+      const placement = probe.placement ? ` placement=${probe.placement}` : '';
+      info(`  OK   ${family} ${probe.address} ${probe.protocol} HTTP ${probe.status} ${probe.durationMs}ms${edge}${placement}`);
+    } else {
+      info(`  FAIL ${family} ${probe.address} ${probe.protocol} ${probe.error} ${probe.durationMs}ms`);
+    }
+  }
+
+  const reachable = diagnosis.probes.filter((probe) => probe.ok).length;
+  if (!reachable) {
+    error('The API did not respond on any resolved address.', {
+      code: 'network_unreachable',
+      next: 'Share this doctor output with Videosays support.',
+    });
+  }
+  if (reachable < diagnosis.probes.length) {
+    info(`\nResult: partial connectivity (${reachable}/${diagnosis.probes.length}). The CLI will retry safe requests on another address.`);
+    return;
+  }
+  success(`\nResult: all ${reachable} resolved addresses are reachable.`);
 }
 
 async function apiCall(method, path, body, options = {}) {
@@ -728,6 +770,7 @@ Usage:
   videosays batch cancel <batch-id>
   videosays balance
   videosays history [limit]
+  videosays doctor
   videosays --version
   videosays help
 
@@ -745,6 +788,7 @@ Configuration:
   API key file: ~/.videosays
   VIDEOSAYS_API_KEY   API key, preferred over config file
   VIDEOSAYS_API_URL   API URL (default: ${DEFAULT_API_URL})
+  VIDEOSAYS_DISABLE_HTTP2=1  troubleshooting override; use HTTP/1.1 only
 
 Examples:
   videosays login
@@ -754,6 +798,7 @@ Examples:
   videosays batch links.txt
   videosays status 123e4567-e89b-12d3-a456-426614174000
   videosays balance
+  videosays doctor
 
 Website: ${WEBSITE_URL}
 API:     ${API_URL}`);
@@ -812,6 +857,9 @@ switch (command) {
     break;
   case 'history':
     await cmdHistory(parseInt(args[1], 10) || 10);
+    break;
+  case 'doctor':
+    await cmdDoctor();
     break;
   case 'help':
   case '--help':
