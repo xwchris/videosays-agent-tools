@@ -2,14 +2,14 @@
 
 Use this checklist when publishing or updating the Videosays agent skill.
 
-## Release receipt — 2026-09-18
+## Release receipt — 2026-09-20
 
-- npm CLI: `videosays@1.2.8`, published and executed from the registry. Skill commands pin this version.
-- [GitHub release](https://github.com/xwchris/videosays-agent-tools/releases/tag/v1.2.8): portable and WorkBuddy ZIPs are available. The WorkBuddy listing metadata includes commit `c514b3e`; its execution instructions match tag `v1.2.8`.
-- ClawHub: `@wegofuture/videosays` version `1.2.8` is public; its security scan reports `clean` with no warnings.
-- Website: `https://videosays.cn/SKILL.md` and `https://videosays.com/SKILL.md` match the canonical file byte for byte after web commit `40e1b09` deployed to both regions.
+- npm CLI: `videosays@1.3.0` is the registry `latest`. Skill commands use `npx -y videosays@latest`; CLI and Skill releases are no longer version-coupled.
+- [GitHub Skill release](https://github.com/xwchris/videosays-agent-tools/releases/tag/skill-v1.3.1): the portable and Chinese-description ZIPs are available. Skill package version `1.3.1` is maintained independently in `distribution/skill-version.json`.
+- ClawHub: `@wegofuture/videosays` version `1.3.1` is public. The current moderation output is `Moderate CLEAN` with an LLM review note.
+- Website: `https://videosays.cn/SKILL.md` and `https://videosays.com/SKILL.md` match the canonical file byte for byte after web commit `50bd80a` deployed to both regions.
 - WorkBuddy native listing: publisher identity verified; version `1.2.8` submitted and the [asset list](https://open.workbuddy.cn/skill/all) confirms **审核中**. Asset ID: `os_f2e2b38d0c28fc69`. The platform estimates a result within 7 working days; this is not approval or public availability. Submitted title: **抖音文案提取 · 视频说**; market category: **内容创作**; service category: **工具 - 办公**. The uploaded ZIP matches the release asset (`cd7719584a35e6046b4a64cbb5e236dda6e98b6a62eb0a22c2832487cce9f267`); the icon is the website's existing `icon.png` exported at the required 512×512 size.
-- SkillHub: the existing entry has been claimed by `@user_e17b951e`, whose verified account is bound to GitHub `xwchris`. Version `1.2.8` was submitted through **更新 Skill** on that original entry; the dashboard confirms **安全审核中**. The [listing](https://skillhub.cn/skills/user_e17b951e/videosays) keeps slug `videosays` and its existing 258 downloads. The public API already returns the Chinese title and summary, the website brand icon, and **设计多媒体 / 视频处理 / 音频处理** categories, but its public version still reports `1.0.0`; do not treat the new version as approved yet. The uploaded portable ZIP matches the release asset (`18f3311daf4521f1258328d7b1516d932638e93180f5ea84a9284c89cc1eaa47`) and contains only the canonical `SKILL.md`. Other Skills in the account were not changed.
+- SkillHub: version `1.3.1` was submitted through **更新 Skill** on the original claimed entry under `@user_e17b951e`; the dashboard confirms **安全审核中**. The [listing](https://skillhub.cn/skills/user_e17b951e/videosays) keeps slug `videosays`, the existing Chinese title/summary, icon, categories, and 270 downloads. The uploaded portable ZIP SHA-256 is `3424863b5e377670a00621b5ea17c4f7b251409e95a87cab908230a771dd1f0d` and contains only the canonical `SKILL.md`. Adjacent Skills were not changed.
 
 Current Chinese title: **抖音文案提取 · 视频说**. The Chinese summary identifies the service as **视频说（Videosays）**; the English brand and machine identifier remain **Videosays** and `videosays`.
 
@@ -42,7 +42,7 @@ Use these terms in descriptions, tags, and marketplace forms:
 
 ### WorkBuddy / SkillHub
 
-The English card previously shown in WorkBuddy came from SkillHub's old `@clawhub_xwchris/videosays` mirror, sourced from `https://clawhub.ai/xwchris/videosays`, version `1.0.0`. Its former `summary_zh` contained the same English text as `summary`. On 2026-09-18 the original entry was available under the claimed account `@user_e17b951e`, bound to GitHub `xwchris`; version `1.2.8` was submitted there with Chinese listing copy. The public API now confirms the Chinese title and summary, while version review remains pending. The adjacent `douyin-to-text` and `dy-caption` entries were not updated.
+The English card previously shown in WorkBuddy came from SkillHub's old `@clawhub_xwchris/videosays` mirror, sourced from `https://clawhub.ai/xwchris/videosays`, version `1.0.0`. Its former `summary_zh` contained the same English text as `summary`. The original entry is now claimed under `@user_e17b951e`, bound to GitHub `xwchris`; version `1.3.1` was submitted there with the existing Chinese listing copy on 2026-09-20. The review remains pending. The adjacent `douyin-to-text` and `dy-caption` entries were not updated.
 
 Updating `@wegofuture/videosays` or GitHub alone does not prove this old mirror has updated. Inspect the exact displayed entry and its upstream owner before publishing. Prefer claiming/updating or consolidating the existing entry over adding more near-duplicate skills. Claiming an entry requires the publisher's SkillHub account; do not treat the local package build as a marketplace update.
 

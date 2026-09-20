@@ -1,6 +1,6 @@
 # 国内 Agent 分发记录
 
-核对日期：2026-09-18。这里区分三件事：能导入自己使用、能提交公共市场、审核通过后其他人能搜到。前两项不代表已公开上架。
+核对日期：2026-09-20。这里区分三件事：能导入自己使用、能提交公共市场、审核通过后其他人能搜到。前两项不代表已公开上架。
 
 ## Qoder：已提交审核
 
@@ -59,8 +59,8 @@ TRAE 公共上架限制另见[官方支持答复](https://forum.trae.cn/t/topic/
 npx skills add xwchris/videosays-agent-tools --skill videosays
 ```
 
-支持 ZIP 的客户端使用现有 [1.2.9 release](https://github.com/xwchris/videosays-agent-tools/releases/tag/v1.2.9) 中的 portable 包 `videosays-skill-1.2.9.zip`。不要使用 WorkBuddy 专用 ZIP 代替通用包。
+支持 ZIP 的客户端使用现有 [Skill v1.3.1 release](https://github.com/xwchris/videosays-agent-tools/releases/tag/skill-v1.3.1) 中的 portable 包 `videosays-skill-1.3.1.zip`。不要使用 WorkBuddy 专用 ZIP 代替通用包。
 
-如果平台直接把 `SKILL.md` 的 description 用作中文市场简介，可运行 `npm run build:skill:china`。输出 `dist/china/videosays/SKILL.md` 和 `dist/china/videosays-cn-1.2.9.zip`：只替换标准 description 为现有中文文案，name 仍为 `videosays`，执行正文与 canonical 文件完全一致。不增加平台专用字段，也不复制维护第二套执行流程。显示名仍要根据平台实际支持的后台字段填写。
+如果平台直接把 `SKILL.md` 的 description 用作中文市场简介，可运行 `npm run build:skill:china`。输出 `dist/china/videosays/SKILL.md` 和按 `distribution/skill-version.json` 命名的 ZIP；当前为 `dist/china/videosays-cn-1.3.1.zip`。它只替换标准 description 为现有中文文案，name 仍为 `videosays`，执行正文与 canonical 文件完全一致。不增加平台专用字段，也不复制维护第二套执行流程。显示名仍要根据平台实际支持的后台字段填写。
 
 首次在一个客户端适配时，应验证 Node.js/npx、浏览器授权、分钟数查询、单次提交后用同一任务 ID 取结果、字幕下载。云端 Agent 还需验证授权是否能跨云端会话完成及凭证的安全保存方式。不得把 API Key 写进 Skill、ZIP 或公开使用案例。
