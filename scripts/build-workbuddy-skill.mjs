@@ -12,7 +12,10 @@ if (!match || !/^name: videosays$/m.test(match[1])) {
   throw new Error('Expected the canonical videosays skill and its YAML frontmatter');
 }
 const listing = JSON.parse(readFileSync(join(root, 'distribution/workbuddy.json'), 'utf8'));
-const { version } = JSON.parse(readFileSync(join(root, 'packages/cli/package.json'), 'utf8'));
+const { version } = JSON.parse(readFileSync(join(root, 'distribution/skill-version.json'), 'utf8'));
+if (!/^\d+\.\d+\.\d+$/.test(version)) {
+  throw new Error('Expected a semantic version in distribution/skill-version.json');
+}
 for (const field of ['display_name', 'display_name_en', 'description_zh', 'description_en', 'author']) {
   if (typeof listing[field] !== 'string' || !listing[field].trim()) {
     throw new Error(`Missing WorkBuddy listing field: ${field}`);

@@ -11,6 +11,7 @@
     "help": "node packages/cli/bin/videosays.js help",
     "cli": "node packages/cli/bin/videosays.js",
     "check:skill-sync": "bash scripts/check-skill-sync.sh",
+    "build:skill:portable": "node scripts/build-portable-skill.mjs",
     "build:skill:workbuddy": "node scripts/build-workbuddy-skill.mjs",
     "build:skill:china": "node scripts/build-china-skill.mjs",
     "test": "node --test packages/cli/tests/*.test.mjs && npm run check:skill-sync",

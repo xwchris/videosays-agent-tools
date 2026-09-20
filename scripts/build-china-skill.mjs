@@ -17,7 +17,10 @@ const { description_zh: description } = JSON.parse(
 if (typeof description !== 'string' || !description.trim()) {
   throw new Error('Missing Chinese listing description');
 }
-const { version } = JSON.parse(readFileSync(join(root, 'packages/cli/package.json'), 'utf8'));
+const { version } = JSON.parse(readFileSync(join(root, 'distribution/skill-version.json'), 'utf8'));
+if (!/^\d+\.\d+\.\d+$/.test(version)) {
+  throw new Error('Expected a semantic version in distribution/skill-version.json');
+}
 const output = join(root, 'dist/china/videosays');
 mkdirSync(output, { recursive: true });
 // Only localize the standard description. Stable name and execution body stay
