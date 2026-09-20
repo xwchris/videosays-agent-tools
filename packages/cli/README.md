@@ -119,7 +119,7 @@ Recharge: https://videosays.cn/dashboard/billing
 
 ## Configuration
 
-The API key is saved to `~/.videosays` by default. The default API and official login/recharge pages use `.cn`; the same account and credits are available through both domains. Existing installations must update to receive this change. For this tested release, use `npm install -g videosays@1.3.0` or `npx videosays@1.3.0`. Published Skill commands pin the same version.
+The API key is saved to `~/.videosays` by default. The default API and official login/recharge pages use `.cn`; the same account and credits are available through both domains. Existing global installations can update with `npm install -g videosays@latest`. Published Skill commands use `npx -y videosays@latest`, so future CLI releases do not require a Skill update.
 
 默认使用 `api.videosays.cn`，登录和充值页面也使用 `.cn`。账号和分钟数不变。已经安装过的 CLI 需要更新；临时设置 API 环境变量只能修改 API 请求，旧版 CLI 的登录和充值链接仍可能指向 `.com`。
 
