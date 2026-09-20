@@ -11,6 +11,7 @@ import { DEFAULT_API_URL, getApiUrl, getWebsiteUrl, resolveWebsiteLink } from '.
 const require = createRequire(import.meta.url);
 const { version: VERSION } = require('../package.json');
 const API_URL = getApiUrl();
+const CLIENT_USER_AGENT = `Videosays-CLI/${VERSION}`;
 const CONFIG_FILE = join(homedir(), '.videosays');
 const DEFAULT_TRANSCRIBE_WAIT_SECONDS = 120;
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
@@ -153,7 +154,12 @@ function getApiKey() {
 }
 
 async function requestJson(method, path, body, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const headers = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+    'User-Agent': CLIENT_USER_AGENT,
+    ...(options.headers || {}),
+  };
   if (options.apiKey) headers['X-API-Key'] = options.apiKey;
   const retryableRequest = method === 'GET';
   const maxAttempts = retryableRequest ? 3 : 1;

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { getApiUrl, resolveWebsiteLink } from '../bin/origins.js';
+
+const require = createRequire(import.meta.url);
+const { version } = require('../package.json');
 
 test('default API reaches the cn endpoint and preserves the API key header', () => {
   const script = `
@@ -11,6 +15,8 @@ test('default API reaches the cn endpoint and preserves the API key header', () 
     process.argv = ['node', 'videosays', 'whoami'];
     globalThis.fetch = async (url, options) => {
       assert.equal(url, 'https://api.videosays.cn/api/v1/credits');
+      assert.equal(options.headers.Accept, 'application/json');
+      assert.equal(options.headers['User-Agent'], ${JSON.stringify(`Videosays-CLI/${version}`)});
       assert.equal(options.headers['X-API-Key'], 'test-key');
       return new Response(JSON.stringify({ balance: 2000 }), { status: 200 });
     };
